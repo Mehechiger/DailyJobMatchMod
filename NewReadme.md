@@ -1,7 +1,7 @@
 # ✨ DailyJobMatch  
-![Made with n8n](https://img.shields.io/badge/Made%20with-n8n-00e8a2?style=flat&logo=n8n)  
-![OpenAI Powered](https://img.shields.io/badge/Powered%20by-OpenAI-412991?style=flat&logo=openai)  
-![Docker](https://img.shields.io/badge/Run%20with-Docker-2496ED?style=flat&logo=docker)  
+![Made with n8n](https://img.shields.io/badge/Made%20with-n8n-00e8a2?style=flat&logo=n8n) 
+![Powered by OpenAI](https://img.shields.io/badge/Powered%20by-OpenAI-412991?style=flat&logo=openai)
+![Docker](https://img.shields.io/badge/Run%20with-Docker-2496ED?style=flat&logo=docker)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
 
 > **Automated AI-powered job-matching workflow built with n8n**
@@ -28,22 +28,22 @@
 DailyJobMatch automates your job search every morning by collecting fresh job postings, comparing each role against your CV using a large language model, and emailing you a ranked shortlist of the most relevant opportunities.
 
 ### ⭐ Core Features
-- 🔄 **Daily automation** — Runs automatically (e.g., 07:30).  
-- 📝 **CV-aware matching** — Uses full CV content, not keywords.  
-- 💯 **Multi-dimensional scoring** — Background, skills, experience, seniority, language, company.  
-- 🧹 **Cleaning & deduplication** — Normalises fields and removes mismatches (student, intern, postdoc).  
-- 📊 **Structured LLM output** — Enforces strict JSON.  
-- 🥇 **Top-N selection** — Keeps only the most relevant jobs.  
-- 💌 **Dark-theme email report** — Job cards, scores, keywords, and “View & Apply” buttons.
+- 🔄 **Daily automation**: Scheduled trigger (e.g. 07:30) runs the entire pipeline without manual effort.
+- 📝 **CV-aware matching**: Uses the full text of your CV, not just keywords, to evaluate fit. 
+- 💯 **Multi-dimensional scoring**: Breaks fit into background match, skills overlap, experience relevance, seniority, language requirements, and company score.
+- 🧹 **Cleaning & deduplication**: Normalises fields, removes obvious mismatches (student roles, internships, postdocs), and deduplicates by title/company/link.
+- 📊 **Structured LLM output**: Forces the model to return strict JSON, then parses and validates it before ranking. 
+- 🥇 **Top-N selection**: Ranks all jobs by overall score and keeps only the top matches for you to review.  
+- 💌 **Dark-theme email report**: Sends a dark-theme HTML digest with job cards, scores, keywords, fit bullets, and “View & Apply” buttons.
 
 ---
 
 ## 🏗️ Architecture Diagram
 
 <p align="center">
-  <img width="2268" src="https://github.com/user-attachments/assets/7ceafeef-1611-4131-9f8b-03a719967199" />
+  <img width="2268" height="386" alt="image" src="https://github.com/user-attachments/assets/7ceafeef-1611-4131-9f8b-03a719967199" />
   <br/>
-  <img width="2565" src="https://github.com/user-attachments/assets/5b406f69-ec06-4b07-aae2e604abda" />
+  <img width="2565" height="406" alt="image" src="https://github.com/user-attachments/assets/5b406f69-ec06-4b07-aae6-ad858304abda" />
 </p>
 
 ---
@@ -55,9 +55,8 @@ DailyJobMatch automates your job search every morning by collecting fresh job po
 ---
 
 ### 1️⃣ Installing & Running n8n with Docker  
-DailyJobMatch is built on **n8n**, a flexible automation tool.  
-Installation guide:  
-https://github.com/n8n-io/n8n
+DailyJobMatch is built on **n8n**, a flexible automation tool. Docker is the recommended and easiest deployment method.
+Here is an installation guide: https://github.com/n8n-io/n8n
 
 ---
 
@@ -66,19 +65,14 @@ https://github.com/n8n-io/n8n
 DailyJobMatch relies on several external services:
 
 #### 🔹 Google Drive & Gmail  
-Used to fetch your CV and send daily job digest emails.  
-Docs:  
+Used to fetch your CV and send daily job digest emails. They require the **Google credentials**, and here are the official docs from n8n:
 https://docs.n8n.io/integrations/builtin/credentials/google/
 
 #### 🔹 Apify (LinkedIn Job Scraper)  
-Collects fresh LinkedIn job postings from the last 24h.  
-I use:  
-**Linkedin Jobs Scraper – PPR**  
-https://apify.com/curious_coder/linkedin-jobs-scraper
+In our workflow, [Apify](https://console.apify.com) is used to collect fresh LinkedIn jobs within the last 24 hours. Apify provides tons of actors to scrape up-to-date web data from any website for AI apps and agents, and I chose [**_Linkedin Jobs Scraper - PPR_**](https://apify.com/curious_coder/linkedin-jobs-scraper) as it is paid by result rather than subscription. But feel free to choose the scrapper which fits your needs, and the detailed configuration steps will be on the actor's page. 
 
 #### 🔹 OpenAI (LLM scoring model)  
-Reads job descriptions + your CV and outputs structured scores.  
-Docs:  
+DailyJobMatch uses an LLM to read your job description, read your CV, evaluate the matches and score the fit across 6 dimensions and finally generate structured JSON outputs. n8n can be integrated with almost all the conversational chatbots. Here's how you can set up with the **OpenAI model**:
 https://docs.n8n.io/integrations/builtin/credentials/openai/
 
 ---
@@ -87,20 +81,20 @@ https://docs.n8n.io/integrations/builtin/credentials/openai/
 After setting up Docker and credentials, import:
 
 ```
-workflow/Job_Hunting_Agent.json
+workflow/Daily_Job_Match.json
 ```
 
-> ⚠️ Replace all my example credentials with your own.
+> ⚠️ **Replace all my example credentials with your own.** 
 
-Customise these nodes:
+I've written a few lines of descriptions for each node, and feel free to click and check the official docs to learn more. Here I will just walk through these key nodes, which you may need to alter or customise based on your needs:
 
-- **Config** — Add Apify API key, recipient email, number of jobs per day.  
-- **RetrieveCV (Google Drive)** — Set your Google Drive OAuth2 + CV PDF file.  
-- **LinkedIn** — Use your Apify endpoint + token.  
-- **Filter & Deduplicate** — Update banned keywords (e.g., “student”, “temporary”).  
-- **Score Job & Extract** — Customise the LLM prompt + scoring logic.  
-- **Model Nodes** — Choose your LLM model/credentials.  
-- **Send a Message (Gmail)** — Select Gmail OAuth2 + set the **To** field.
+- **Config**: Add Apify API key (NOT the full link, check LinkedIn node), recipient email, and number of jobs per day.  
+- **RetrieveCV (Google Drive)**: Under Credentials, select your Google Drive OAuth2 credential and make sure the file / fileId is set to your CV PDF.  
+- **LinkedIn** Under URL or body, make sure it uses your Apify dataset or actor endpoint (depending on how you configured it). Under Authentication / Headers, ensure your Apify API token is set. 
+- **Filter & Deduplicate**: Update banned keywords (e.g., “student”, “temporary”).  
+- **Score Job & Extract**: customise the prompt for your agent, including the goals, input and tasks.  
+- **Model Nodes**: finish credentials setting and choose your model. 
+- **Send a Message (Gmail)**: Under Credentials, choose your Gmail OAuth2 credential. Ensure the To field is either A static email or an expression pointing to Config.gmailTo.
 
 #### ✔️ Manual Test  
 Disable schedule → click **Execute Workflow** → review step-by-step execution.
@@ -109,7 +103,7 @@ Disable schedule → click **Execute Workflow** → review step-by-step executio
 
 ## 📤 Output Format
 
-The scoring node requires the LLM to:
+For my personalised agent, the scoring node requires the LLM to:
 
 - Read your entire CV  
 - Read the job description  
@@ -170,12 +164,11 @@ Feel free to reach out with questions or feature ideas!
 
 ## 🌟 Roadmap
 
-- JobIndex / StepStone / Indeed integrations  
-- Notion / Supabase job-tracking storage  
-- Auto-apply system (draft cover letters)  
-- Multi-country job search  
-- Weekly analytics dashboard (Grafana / Supabase)  
-- AI-based CV improvement suggestions  
+- JobIndex integrations  
+- Notion job-tracking storage  
+- Auto-apply system (draft cover letters) 
+- Weekly analytics dashboard
+- AI-based CV improvement suggestions 
 
 _Contributions welcome — open an issue or submit a PR!_
 
