@@ -1,0 +1,1771 @@
+{
+  "name": "Daily_Job_Match",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2976,
+        624
+      ],
+      "id": "94c9cb01-0b5e-4ce6-a5d1-9c141e42dbd2",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "sendTo": "mehechiger.zhao@gmail.com",
+        "subject": "Daily Job Dose",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1952,
+        624
+      ],
+      "id": "50ecc81f-723a-4e28-9755-87c933af78d2",
+      "name": "Send a message",
+      "webhookId": "a7f1bd8e-c66a-4713-b9c7-01831e564fa5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kmG0fn8lIgyQSzIE",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional AI assistant that evaluates how well a candidate’s CV fits a specific job.\n\n## GOAL\nCompare the candidate’s full profile (CV and Personal Statement) and the job description, evaluate their fit across defined categories, and return **STRICT JSON only**. Ensure all text values in the JSON are in Chinese, keeping key terms or entities from the source text in parentheses (e.g., 'Chinese Translation (Source Term)').\n\n---\n\n### INPUTS\n- Candidate CV:\n{{ $json.cv_text }}\n- Candidate Personal Statement:\n{{ $json.ps_text }}\n- Job description:\n{{ $json.job_text }}\n\n---\n\n### TASKS\n1. **Understand the role**  \n   - Write a neutral 2–3-sentence summary in Chinese of what the job is about.  \n   - Extract 3–5 concise keywords that capture its main technical and domain focus translated into Chinese with the original English in parentheses.\n\n2. **Assess fit**  \n   - Produce 2–3 short bullet points in Chinese showing how the candidate’s background or experience matches the role, synthesizing evidence from both the CV and Personal Statement.  \n   - Write a short connector in Chinese (1–2 sentences) that links the candidate’s profile to the job’s mission or company focus.\n\n3. **Score fit across categories**\n\n| Category | Range | Guidance |\n|-----------|-------|-----------|\n| background_match | 0–10 | 10 = {{ $json.fit_criteria.background_match_high }}; 6–9 = {{ $json.fit_criteria.background_match_mid }}; 0 = {{ $json.fit_criteria.background_match_low }} |\n| skills_overlap | 0–30 | {{ $json.fit_criteria.skills_overlap }} |\n| experience_relevance | 0–30 | Check if candidate’s project or work experience aligns with listed responsibilities and requirements |\n| seniority | 0–10 | 10 = {{ $json.fit_criteria.seniority_high }}; 6-9 = {{ $json.fit_criteria.seniority_mid }}; 0 = {{ $json.fit_criteria.seniority_low }} |\n| language_requirement | 0–10 | 0 = {{ $json.fit_criteria.language_requirement_low }}; 6-9 = {{ $json.fit_criteria.language_requirement_mid }}; 10 = {{ $json.fit_criteria.language_requirement_high }} |\n| company_score | 0–10 | 10 = {{ $json.fit_criteria.company_score_high }}; 5 = {{ $json.fit_criteria.company_score_mid }}; 0 = {{ $json.fit_criteria.company_score_low }} |\n\nThen compute  \n`overall = background_match + skills_overlap + experience_relevance + seniority + language_requirement + company_score`\n\n---\n\n### RULES\n- Use only information found in the CV, Personal Statement and job text. \n- Return one **valid JSON object** exactly matching the schema below.  \n- No explanations or natural-language text outside the JSON.  \n- `score.overall` must equal the sum of sub-scores.\n- Language Requirement: All string values (summary, fit_bullets, connector) must be generated in Chinese.\n- Keyword Preservation: When translating technical terms, job titles, or specific skills, strictly use the format \"Chinese (Original English Term)\".\n- Contextual Resolution & Candidate Intent: Use the Personal Statement to resolve ambiguities. Consider the Personal Statement as the candidate’s direct elaboration on their experience, taking precedence over the structured summary in the CV. Interpret the Personal Statement as the decisive expression of the candidate's current capabilities and focus. Use it to override generic listings in the CV if discrepancies arise.\n\n---\n\n### OUTPUT SCHEMA\n{\n  \"score\": {\n    \"overall\": (0–100),\n    \"background_match\": (0–10),\n    \"skills_overlap\": (0–30),\n    \"experience_relevance\": (0–30),\n    \"seniority\": (0–10),\n    \"language_requirement\": (0–10),\n    \"company_score\": (0–10)\n  },\n  \"summary\": \"2–3 sentence neutral summary of the role\",\n  \"keywords\": [\"keyword1\",\"keyword2\",\"keyword3\"],\n  \"fit_bullets\": [\n    \"bullet1\",\n    \"bullet2\"\n  ],\n  \"connector\": \"1–2 sentences linking the candidate’s experience to this role\"\n}\n\n---\n\n### OUTPUT EXAMPLE\n{\n  \"score\": {\n    \"overall\": 82,\n    \"background_match\": 8,\n    \"skills_overlap\": 24,\n    \"experience_relevance\": 25,\n    \"seniority\": 9,\n    \"language_requirement\": 8,\n    \"company_score\": 8\n  },\n  \"summary\": \"该职位是位于巴黎的BCG X数据科学家角色，负责从问题定义、算法设计到模型部署的全链路AI解决方案，实现对客户业务的深度赋能 (AI solutions)。\",\n  \"keywords\": [\"Python\", \"机器学习 (Machine Learning)\", \"人工智能 (Ai)\", \"Mlops\", \"客户面对 (Client-Facing)\"],\n  \"fit_bullets\": [\n    \"在Bonne Lecture领导研发GenAI项目，设计并部署RAG (Retrieval-Augmented Generation) 架构，涵盖模型微调 (fine-tuning) 与全栈部署，符合BCG X端到端AI解决方案的需求。\",\n    \"构建完整的MLOps流水线，使用AWS SageMaker、Docker、GitHub Actions、Terraform，实现CI/CD/CT，满足岗位对现代开发工具和DevOps经验的要求。\"\n  ],\n  \"connector\": \"候选人在AI驱动的产品研发、跨团队协作以及技术领导方面的丰富经验，正好契合BCG X通过创新数据科学 (data science) 与AI技术推动客户数字化转型的使命。\"\n}",
+        "hasOutputParser": true,
+        "options": {
+          "batching": {
+            "delayBetweenBatches": 60000
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        368,
+        432
+      ],
+      "id": "0b7c42f4-d446-431c-82bb-8f112e7c9606",
+      "name": "Score the job and extract",
+      "retryOnFail": false,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "cv_fang_zhao_fr.pdf",
+        "limit": 1,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1dTBNhF8dgyOiwX6gv30dol2NvdndC-Wj",
+            "mode": "list",
+            "cachedResultName": "daily-job-match-mod-n8n",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1dTBNhF8dgyOiwX6gv30dol2NvdndC-Wj"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2192,
+        624
+      ],
+      "id": "05bb3dac-3cf0-4f8a-8153-ee99d13ddc5e",
+      "name": "RetrieveCV",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "pfEA2PECiPwhGZos",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取 SerpApi 返回的完整 JSON\nconst response = $input.first().json;\n\n// 提取职位列表，如果没有结果则为空数组\nconst jobs = response.jobs_results || [];\n\n// 映射 SerpApi 数据结构到你的工作流标准格式\nreturn jobs.map(j => {\n  // 处理申请链接：SerpApi 通常提供多个申请渠道，我们取第一个或 Prefer 的\n  const applyLinks = j.apply_options || [];\n  const primaryLink = applyLinks.length > 0 ? applyLinks[0].link : j.share_link;\n  \n  // 处理职位描述：SerpApi 列表页通常只给 snippet，如果需要全文可能需要额外调用\n  // 但对于初筛，合并 snippet 和 extension 通常足够\n  const description = j.description || (j.snippet ? j.snippet : '');\n\n  // 尝试从 extensions 提取发布时间 (例如 \"3 days ago\")\n  const postedAtRaw = j.extensions ? j.extensions.find(e => e.includes('ago')) : null;\n  const postedAt = postedAtRaw || new Date().toISOString();\n\n  // 构建用于去重的唯一 ID (Google Jobs 有 job_id，但为了保险我们组合一下)\n  const jobId = j.job_id || '';\n\n  return {\n    source: 'google_jobs',\n    \n    // 基础字段\n    id: jobId,\n    title: (j.title || '').trim(),\n    company: (j.company_name || '').trim(),\n    location: (j.location || '').trim(),\n    \n    // 链接\n    url: j.share_link || primaryLink, // 分享链接通常是 Google Jobs 的详情页\n    apply_url: primaryLink,           // 直接跳转到 Indeed/LinkedIn/官网 的链接\n    \n    // 元数据\n    posted_at: postedAt,\n    salary: j.salary || '', // Google Jobs 有时会抓取到薪资\n    \n    // 描述 (注意：这是用于 AI 匹配的核心文本)\n    raw_description: description,\n    \n    // 公司信息 (SerpApi 给的比较少，不像 Apify 爬取 LinkedIn 那么全)\n    company_logo: j.thumbnail || '',\n    \n    // 组合文本用于去重 Hash (对应原流程的 Filter 节点)\n    text_for_hash: (j.title || '') + (j.company_name || '') + (primaryLink || ''),\n\n    // 组合文本用于 AI 匹配 (尽可能多塞入信息)\n    text_for_matching: [\n      j.title,\n      j.company_name,\n      j.location,\n      description,\n      (j.extensions || []).join(', ') // 把 \"Work from home\", \"Full-time\" 等标签加进去\n    ]\n    .filter(Boolean)\n    .join(' — ')\n    .slice(0, 20000),\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        624
+      ],
+      "id": "2c45b153-fdbf-4e88-bf41-88e3fd183a7e",
+      "name": "NormalizeData",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node (NOT Function Item)\n\n// stable hash\nfunction hashKey(title, company, url) {\n  const s = (title || '') + '|' + (company || '') + '|' + (url || '');\n  let h = 5381; \n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);\n  return (h >>> 0).toString(16);\n}\n\n// ban list\nconst BAN = [\n  /student\\s*(assistant|helper)?/i,\n  /\\bstudent\\b/i,\n  /studenter/i,\n  /\\bpost[- ]?doc(toral)?\\b/i,\n  /\\bpraktikant\\b/i,\n];\n\nconst input = $input.all();\nconst seen = new Set();\nconst out = [];\n\nfor (let i = 0; i < input.length; i++) {\n  const src = input[i];\n  const j = { ...(src.json || {}) }; // shallow clone\n\n  // ban check\n  const hay = ((j.title || '') + ' ' + (j.raw_description || '')).toLowerCase();\n  if (BAN.some(re => re.test(hay))) continue;\n\n  // dedupe\n// 使用 Google Jobs ID 作为主要去重键，如果没有则回退到 title+company\nconst k = j.id ? j.id : hashKey(\n  (j.title || '').toLowerCase(),\n  (j.company || '').toLowerCase(),\n  '' // 忽略 URL，因为它可能变动\n);\n  if (seen.has(k)) continue;\n  seen.add(k);\n\n  j.hash = k;\n\n  // preserve pairing so downstream nodes don't complain\n  out.push({\n    json: j,\n    pairedItem: { item: i }\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        624
+      ],
+      "id": "7d111726-9e40-48b4-b9b4-6eff4a70b61c",
+      "name": "Filter and deduplicate"
+    },
+    {
+      "parameters": {
+        "batchSize": "={{ $('General Config').item.json.LLMBatchSize }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        112,
+        256
+      ],
+      "id": "2efbf51a-8014-4513-a31b-61be0d2686f8",
+      "name": "Loop Over Items",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me",
+      "typeVersion": 1,
+      "position": [
+        480,
+        48
+      ],
+      "id": "8e4ac4fc-355e-4409-85af-f0548ece6593"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"score\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"overall\": { \"type\": \"number\" },\n        \"background_match\": { \"type\": \"number\" },\n        \"skills_overlap\": { \"type\": \"number\" },\n        \"experience_relevance\": { \"type\": \"number\" },\n        \"seniority\": { \"type\": \"number\" },\n        \"language_requirement\": { \"type\": \"number\" },\n        \"company_score\": { \"type\": \"number\" }\n      },\n      \"required\": [\n        \"overall\",\n        \"background_match\",\n        \"skills_overlap\",\n        \"experience_relevance\",\n        \"seniority\",\n        \"language_requirement\",\n        \"company_score\"\n      ]\n    },\n    \"summary\": { \"type\": \"string\" },\n    \"keywords\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" }\n    },\n    \"fit_bullets\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" }\n    },\n    \"connector\": { \"type\": \"string\" }\n  },\n  \"required\": [\"score\", \"summary\", \"keywords\", \"fit_bullets\", \"connector\"]\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        704
+      ],
+      "id": "1776c57c-9631-4436-ba97-45213c1ff6cf",
+      "name": "Structured Output Parser",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "content": "**Schedule Trigger:**\n- Starts the workflow automatically each morning 9:30 ",
+        "height": 320,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3040,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "34b68f53-10d4-45c8-bc39-b40138033495",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**Configuration**: \nDefines all key workflow parameters such as \n- API tokens, \n- email settings,\nas well as search criteria:\n- job title\n- location, etc.",
+        "height": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2512,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "52ef21cf-863d-4def-86cf-cc649827be24",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**CV Retrieval and Preprocessing**:\n- Downloads the latest version of your CV from Google Drive\n- Converts your CV PDF into plain text for downstream analysis.\n- Stores and labels the extracted CV text in a consistent field for use by the AI agent.",
+        "height": 320,
+        "width": 640,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2240,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "a667e875-06b7-4602-a4e7-e3702aa97856",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**Job Data Collection and Preprocessing:**\n- Collects fresh job postings from LinkedIn\n- Standardises all job fields\n- Removes duplicates and filters out irrelevant roles with defined keywords\n- Combines each job description with your extracted CV text ",
+        "height": 320,
+        "width": 864,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -832,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "3a4ae3eb-9c1c-42bf-a6d2-298b66c5c1a1",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// === Prepare compact prompt input for the AI scoring agent ===\n\n// Grab the fit criteria from the earlier node\nconst fit_crit = $('Fit Criteria').first().json;\n\n// Fetch your CV text from the earlier node\n// (Change 'MapResume' to your actual node name that contains cv_text)\nconst cv_text = $('MapCV').item.json.cv_text;\n\nconst ps_text = $('MapPS').item.json.ps_text.slice(0, 5000); // safety cap\n\nconst job = $json;\n\n// limit long job text to avoid token waste\nconst maxDesc = 5000; // ~1000 words\nconst cleanDesc = (job.raw_description || '')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .slice(0, maxDesc);\n\n// build a structured summary text block for LLM\nconst jobTextBlock = [\n  `Job title: ${job.title || ''}`,\n  `Company: ${job.company || ''}`,\n  job.location ? `Location: ${job.location}` : '',\n  job.seniority_level ? `Seniority: ${job.seniority_level}` : '',\n  job.employment_type ? `Employment type: ${job.employment_type}` : '',\n  job.industries ? `Industry: ${job.industries}` : '',\n  job.job_function ? `Function: ${job.job_function}` : '',\n  '',\n  'Job Description:',\n  cleanDesc,\n].filter(Boolean).join('\\n');\n\n// return one item per job\nreturn {\n  job_text: jobTextBlock,\n  cv_text: cv_text.slice(0, 10000), // safety cap\n  job_meta: {\n    title: job.title || '',\n    company: job.company || '',\n    url: job.url || job.apply_url || '',\n    hash: job.hash || '',\n    location: job.location || '',\n    posted_at: job.posted_at || '',\n    source: job.source || 'LinkedIn'\n  },\n  ps_text: ps_text,\n  fit_criteria: {\n    background_match_high: fit_crit.background_match_high || 'explicitly mentions NLP or identical field',\n    background_match_mid: fit_crit.background_match_mid || 'data consultant roles',\n    background_match_low: fit_crit.background_match_low || 'unrelated domain',\n    skills_overlap: fit_crit.skills_overlap || 'Compare coding, analysis, statistics, data tools, and soft skills appearing in both CV and job text',\n    seniority_high: fit_crit.seniority_high || 'junior',\n    seniority_mid: fit_crit.seniority_mid || 'senior/confirmed',\n    seniority_low: fit_crit.seniority_low || 'manager/executive',\n    language_requirement_high: fit_crit.language_requirement_high || 'English-friendly or international',\n    language_requirement_mid: fit_crit.language_requirement_mid || 'requires fluent ' + '',\n    language_requirement_low: fit_crit.language_requirement_low || 'requires fluency in languages other than ' + '',\n    company_score_high: fit_crit.company_score_high || 'large or international IT/AI/NLP/Data company',\n    company_score_mid: fit_crit.company_score_mid || 'medium data-driven company',\n    company_score_low: fit_crit.company_score_low || 'unrelated small local firm or startup'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        624
+      ],
+      "id": "27c283d4-3d7d-40a2-a5ec-0a71793f49d5",
+      "name": "Prepare AI Input"
+    },
+    {
+      "parameters": {
+        "content": "**(Optional) Batch Running:**\n- Runs the AI agent in controlled batches \ninstead of sending all items at once.\n-  Reassembles and outputs all processed \nbatches into a single, continuous dataset.",
+        "height": 400,
+        "width": 672,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        16
+      ],
+      "typeVersion": 1,
+      "id": "8bbd8a28-bc0f-45df-a20f-7e5782979865",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**AI Scoring and Structured Output:**\nScore the Job and Extract:\n• Compares each job with your CV to assess fit.\n• Evaluates across categories (skills, background, experience, etc.).\n• Generates structured JSON with score breakdown, summary, and fit notes.\nStructured Output Parser:\n• Validates and enforces correct JSON format.\n• Ensures every AI response follows the defined schema before merging.\n\n\n",
+        "height": 656,
+        "width": 672,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        192,
+        368
+      ],
+      "typeVersion": 1,
+      "id": "c495743b-1593-448b-8b3a-a80353d15bd4",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1056,
+        624
+      ],
+      "id": "df745d37-6eb8-4900-b7fd-2bb3b488b7f4",
+      "name": "Merge Scores + Meta"
+    },
+    {
+      "parameters": {
+        "content": "**Parse & Merge Results**\n- Convert the chat model’s text response into a clean JSON object\n- Attach job metadata back onto the parsed LLM output.",
+        "height": 432,
+        "width": 592,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "4a03407e-f147-49ee-99ce-4f3f10838fd2",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Function Item version – returns ONE object\n\nlet raw;\n\nif (typeof $json.output === 'string') {\n  raw = $json.output;\n} else if ($json.choices?.[0]?.message?.content) {\n  raw = $json.choices[0].message.content;\n} else {\n  raw = JSON.stringify($json);\n}\n\nraw = raw.trim();\nraw = raw.replace(/^```json/i, '').replace(/```$/, '').trim();\n\nlet data;\ntry {\n  data = JSON.parse(raw);\n} catch (e) {\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  if (m) {\n    try { data = JSON.parse(m[0]); }\n    catch (e2) { data = { parse_error: e2.message, raw }; }\n  } else {\n    data = { parse_error: e.message, raw };\n  }\n}\n\n// return a single object (Function Item requires an object)\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        432
+      ],
+      "id": "528a4334-0d1a-4c6d-89af-a5ae6270efe3",
+      "name": "Parse LLM JSON"
+    },
+    {
+      "parameters": {
+        "content": "**Top 15 Selection:**\n- Order jobs from best to worst fit\n- Keeps only the top 15 best-fit jobs for report and email",
+        "height": 320,
+        "width": 448,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1216,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "c3bf3f60-6302-49e3-bb89-94698e4e1a0a",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "output.score.overall",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {
+          "disableDotNotation": false
+        }
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        624
+      ],
+      "id": "550b70e3-4c97-4fa5-b33f-7f203df9247c",
+      "name": "Rank by Overall Score"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep first 15 highest-scoring items (already sorted)\nconst items = $input.all();\nconst top = items.slice(0, 15);\nreturn top; // they are already {json: ...} items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        624
+      ],
+      "id": "86f1f103-fa8d-4692-8525-667d38abdc84",
+      "name": "Top 15 Slice"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === Beautiful, consistent HTML for Top jobs (dark theme, robust to nested fields) ===\nfunction esc(s){return String(s??'').replace(/[<&>]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]));}\n\n// Accept {json:{...}} or plain {...}\nconst raws = $input.all();\nconst items = raws.map(it => (it && typeof it==='object' && 'json' in it) ? it.json : it);\n\n// Helpers\nconst titleCase = s => String(s||'')\n  .toLowerCase()\n  .replace(/\\b([a-z])/g, m => m.toUpperCase());\n\nfunction pick(i){\n  const out  = i.output   || {};\n  const meta = i.job_meta || {};\n  const keywords = Array.isArray(out.keywords) ? out.keywords : [];\n  const bullets  = Array.isArray(out.fit_bullets) ? out.fit_bullets.slice(0,3) : [];\n  const overall  = (out.score && out.score.overall!=null) ? out.score.overall : '';\n  return {\n    title: meta.title || '',\n    company: meta.company || '',\n    location: meta.location || '',\n    url: meta.url || i.url || i.apply_url || '#',\n    score: overall,\n    summary: out.summary || '',\n    bullets,\n    connector: out.connector || '',\n    chips: keywords.slice(0,6).map(titleCase)\n  };\n}\n\nfunction scoreColor(n){\n  if (n==='' || isNaN(n)) return '#9aa0a6';\n  n = Number(n);\n  if (n >= 85) return '#22c55e'; // green\n  if (n >= 70) return '#3b82f6'; // blue\n  if (n >= 55) return '#eab308'; // amber\n  return '#f97316';              // orange\n}\n\nconst style = `\n  body{margin:0;background:#0f1115;color:#e6e7eb;font-family:ui-sans-serif,system-ui,Arial}\n  .wrap{max-width:820px;margin:0 auto;padding:28px}\n  h2{margin:0 0 18px 0;font-size:22px;letter-spacing:.2px}\n  .card{border:1px solid #232635;background:#151821;border-radius:14px;padding:18px 20px;margin:16px 0;box-shadow:0 2px 6px rgba(0,0,0,.25)}\n  .title{margin:0;font-size:18px;font-weight:800;color:#8ab4ff}\n  .meta{margin:6px 0 10px 0;color:#b6bcc8;font-size:12px}\n  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}\n  .badge{display:inline-block;border:1px solid rgba(255,255,255,.08);padding:2px 10px;border-radius:999px;font-size:12px}\n  .score{font-weight:800}\n  .score-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:800;background:#1f2937;color:#fff;border:1px solid rgba(255,255,255,.08)}\n  .chips{margin:2px 0 8px 0}\n  .chip{display:inline-block;margin:6px 8px 0 0;padding:4px 10px;border-radius:999px;font-size:12px;\n        background:#1e2330;border:1px solid #2a3244;color:#cbd5e1}\n  .summary{margin:8px 0 8px 0;line-height:1.55;font-size:13px;color:#e0e3ea}\n  ul{margin:8px 0 0 18px;padding:0}\n  li{margin:6px 0;line-height:1.45;font-size:13px; color:#e0e3ea;}\n  .connector{margin:12px 0 0 0;color:#c7cbd6;font-size:13px}\n  .btn{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:10px;background:#3b82f6;color:#fff !important;\n       text-decoration:none;font-weight:700;font-size:13px;border:1px solid #315fd1}\n  .divider{height:1px;background:#232635;margin:12px 0;border-radius:1px}\n  .footer{margin-top:20px;color:#9aa0a6;font-size:12px}\n`;\n\nfunction card(item){\n  const j = pick(item);\n  const sc = j.score === '' ? '—' : String(j.score);\n  const scColor = scoreColor(j.score);\n  const chips = j.chips.length ? `<div class=\"chips\">${j.chips.map(c=>`<span class=\"chip\">${esc(c)}</span>`).join('')}</div>` : '';\n  const bullets = j.bullets.length ? `<ul>${j.bullets.map(b=>`<li>${esc(b)}`).join('')}</ul>` : '';\n  const connector = j.connector ? `<div class=\"connector\">${esc(j.connector)}</div>` : '';\n  return `\n    <div class=\"card\">\n      <div class=\"row\" style=\"justify-content:space-between\">\n        <h3 class=\"title\">${esc(j.title)}</h3>\n        <span class=\"score-pill\" style=\"border-color:${scColor};color:${scColor}\">Score: ${sc}/100</span>\n      </div>\n      <div class=\"meta\">${esc(j.company)} — ${esc(j.location)}</div>\n      ${chips}\n      <div class=\"summary\">${esc(j.summary)}</div>\n      ${bullets}\n      ${connector}\n      <div class=\"divider\"></div>\n      <a class=\"btn\" href=\"${esc(j.url)}\" target=\"_blank\">View & Apply</a>\n    </div>\n  `;\n}\n\nconst html = `\n<!doctype html>\n<html>\n<head><meta charset=\"utf-8\"><style>${style}</style></head>\n<body>\n  <div class=\"wrap\">\n    <h2>🔥 Your Top ${items.length} Job Matches Today</h2>\n    ${items.map(card).join('\\n')}\n    <div class=\"footer\">Sent by your Job Agent at ${new Date().toLocaleString()}.</div>\n  </div>\n</body>\n</html>\n`;\n\n// Return correct shape for your node type\nconst first = $input.first();\nconst isFunctionNode = first && typeof first==='object' && 'json' in first;\nreturn isFunctionNode ? [{ json: { html } }] : { html };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        624
+      ],
+      "id": "aedff322-90ca-4bd5-9679-6a2f4b43af74",
+      "name": "Build Email HTML"
+    },
+    {
+      "parameters": {
+        "content": "**Output & Notification**\n- Generates a clean, formatted HTML summary of your top job matches\n- Delivers the daily AI-filtered job report directly to your inbox.",
+        "height": 320,
+        "width": 448,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1664,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "267a0685-ba39-4f9d-a9df-b2f329bcf339",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_jobs"
+            },
+            {
+              "name": "q",
+              "value": "=Data Scientist Paris"
+            },
+            {
+              "name": "gl",
+              "value": "fr"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "api_key",
+              "value": "=8a200693f05450604bb82a78b1f14c84a7cdfff05e4f96c376ccffc3a7eb938b"
+            },
+            {
+              "name": "num",
+              "value": "30"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -784,
+        624
+      ],
+      "id": "dc41b33c-3b7e-47eb-a941-e2c4b5b3cac7",
+      "name": "Google Jobs search",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        336,
+        672
+      ],
+      "id": "cac08cbf-bf64-41f2-92b3-bf8e41a54b56",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "s5CjJmHETFhKmqYL",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        736,
+        816
+      ],
+      "id": "685e5d4a-31f6-4fda-92cc-8bb0181b8d8f",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "s5CjJmHETFhKmqYL",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f6c4d944-63ed-44ce-ac64-934b24505b79",
+              "name": "background_match_high",
+              "value": "explicitly mentions NLP or identical field",
+              "type": "string"
+            },
+            {
+              "id": "c63fd2f1-e8ca-44ba-83c2-0c289c8835c3",
+              "name": "background_match_mid",
+              "value": "data consultant roles",
+              "type": "string"
+            },
+            {
+              "id": "b7325d72-ce30-481e-9dce-d0f9cd2206ef",
+              "name": "background_match_low",
+              "value": "unrelated domain",
+              "type": "string"
+            },
+            {
+              "id": "27512610-804f-4216-816f-333a4eb0a41f",
+              "name": "skills_overlap",
+              "value": "Compare coding, analysis, statistics, data tools, and soft skills appearing in both CV and job text",
+              "type": "string"
+            },
+            {
+              "id": "50452e83-8169-458e-8a47-4246389a06ba",
+              "name": "language_requirement_high",
+              "value": "English-friendly or international",
+              "type": "string"
+            },
+            {
+              "id": "bffdd56a-7d04-4b1e-b57a-3422c43497db",
+              "name": "language_requirement_mid",
+              "value": "requires fluent English or French",
+              "type": "string"
+            },
+            {
+              "id": "d8c5982a-2eae-48f1-baea-1ba874f87c67",
+              "name": "language_requirement_low",
+              "value": "requires fluency in languages other than Chinese, English or French",
+              "type": "string"
+            },
+            {
+              "id": "0a61f8b1-97ca-4e07-a36d-93fa4760ac7a",
+              "name": "company_score_high",
+              "value": "large or international IT/AI/NLP/Data company",
+              "type": "string"
+            },
+            {
+              "id": "f4f29b17-a01e-486c-b710-ad8790bfabf7",
+              "name": "company_score_mid",
+              "value": "medium data-driven company",
+              "type": "string"
+            },
+            {
+              "id": "81becdc1-87d6-41c6-9812-28bbdf1c7c83",
+              "name": "company_score_low",
+              "value": "unrelated small local firm or startup",
+              "type": "string"
+            },
+            {
+              "id": "d46f581e-a21c-47a9-8464-1264ea907997",
+              "name": "seniority_high",
+              "value": "junior",
+              "type": "string"
+            },
+            {
+              "id": "753a42be-bebc-49d7-a959-bc7ab53743f1",
+              "name": "seniority_mid",
+              "value": "senior/confirmed",
+              "type": "string"
+            },
+            {
+              "id": "48f5e3e8-0581-4964-b435-521befc403de",
+              "name": "low",
+              "value": "manager/executive/internship",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2704,
+        624
+      ],
+      "id": "904cf802-e7b7-4e6b-b2b2-1c9817848c75",
+      "name": "Fit Criteria"
+    },
+    {
+      "parameters": {
+        "content": "**Fit Criteria**:\nDefines the criteria of fitness between the profile and the job.",
+        "height": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2784,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "705e65e6-4598-4cb9-951d-47e787790cb0",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0619efc8-36c0-40ae-a873-68be9b0bbf3b",
+              "name": "serpApiKey",
+              "value": "8a200693f05450604bb82a78b1f14c84a7cdfff05e4f96c376ccffc3a7eb938b",
+              "type": "string"
+            },
+            {
+              "id": "54e1280f-5944-4d35-9c9a-e52694c4c5eb",
+              "name": "gmailTo",
+              "value": "mehechiger.zhao@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "a5a26dc1-d939-4aee-a01e-94166fb0fa71",
+              "name": "topDetailed",
+              "value": "5",
+              "type": "string"
+            },
+            {
+              "id": "66633cbc-76c5-47af-8c1b-3af64626a711",
+              "name": "topTotal",
+              "value": "15",
+              "type": "string"
+            },
+            {
+              "id": "dd77193b-d572-43a6-8aa0-2f68d2c69e2e",
+              "name": "searchQuery",
+              "value": "Data Scientist",
+              "type": "string"
+            },
+            {
+              "id": "44a873ce-17a0-44a6-8dde-1406f7bad001",
+              "name": "LLMBatchSize",
+              "value": "1",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2384,
+        624
+      ],
+      "id": "ca86f738-cec1-4510-ac3a-9a638784647d",
+      "name": "General Config"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        480
+      ],
+      "id": "ce958374-ab15-49c9-bffc-cb919324ae4e",
+      "name": "Wait",
+      "webhookId": "5d2c340f-86f0-400c-b550-b233c0d115dd"
+    },
+    {
+      "parameters": {
+        "content": "**PS Retrieval and Preprocessing**:\n- Downloads the latest version of your PS (Personal Statement or PostScriptum) from Google Drive\n- Converts your PS txt into plain text for downstream analysis.\n- Stores and labels the extracted PS text in a consistent field for use by the AI agent.",
+        "height": 320,
+        "width": 640,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1536,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "4b625fc5-a3ba-4856-b2ae-8a0d3accc12c",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "PS.txt",
+        "limit": 1,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1dTBNhF8dgyOiwX6gv30dol2NvdndC-Wj",
+            "mode": "list",
+            "cachedResultName": "daily-job-match-mod-n8n",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1dTBNhF8dgyOiwX6gv30dol2NvdndC-Wj"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1504,
+        624
+      ],
+      "id": "0265327a-6ff5-419d-b02e-d2c8e27baf54",
+      "name": "RetrievePS",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "pfEA2PECiPwhGZos",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        624
+      ],
+      "id": "490456f3-f310-43d6-a7e4-9efd5c05a9ac",
+      "name": "Extract from PS"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        624
+      ],
+      "id": "0d37ccf5-e2e6-4cc5-bdfc-00a00b3b6eca",
+      "name": "Extract from CV"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bdc4c8e-3891-4c52-a7c5-3d8dd0565be6",
+              "name": "cv_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1728,
+        624
+      ],
+      "id": "efa8e772-f571-41bb-8d8b-a6019112b986",
+      "name": "MapCV"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bdc4c8e-3891-4c52-a7c5-3d8dd0565be6",
+              "name": "ps_text",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1024,
+        624
+      ],
+      "id": "71bb4d93-df31-4766-93d1-f90dcae7e6d9",
+      "name": "MapPS"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2032,
+        624
+      ],
+      "id": "9d45022f-bf79-430a-a4ba-6b48d5b212ab",
+      "name": "Download CV",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "pfEA2PECiPwhGZos",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1344,
+        624
+      ],
+      "id": "0d4f871c-c016-48c7-a88b-13d60c5d850c",
+      "name": "Download PS",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "pfEA2PECiPwhGZos",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Google Jobs search": [
+      {
+        "json": {
+          "search_metadata": {
+            "id": "697b35040fa72e500f3302c1",
+            "status": "Success",
+            "json_endpoint": "https://serpapi.com/searches/ceb02440d198dcf7/697b35040fa72e500f3302c1.json",
+            "created_at": "2026-01-29 10:23:00 UTC",
+            "processed_at": "2026-01-29 10:23:00 UTC",
+            "google_jobs_url": "https://www.google.com/search?q=Data+Scientist+Paris&hl=en&gl=fr&udm=8",
+            "raw_html_file": "https://serpapi.com/searches/ceb02440d198dcf7/697b35040fa72e500f3302c1.html",
+            "total_time_taken": 1.04
+          },
+          "search_parameters": {
+            "q": "Data Scientist Paris",
+            "engine": "google_jobs",
+            "google_domain": "google.com",
+            "hl": "en",
+            "gl": "fr"
+          },
+          "filters": [
+            {
+              "name": "Date posted",
+              "options": [
+                {
+                  "name": "Yesterday",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-MAZf--FQBpDGNmfRY3Y-ztu30xPevEuO26nxAk1JPFEP1hBXahXQ22lwwaaL6tJDZp8wSC01hMgDf_4Ew2TyNJj5fOELaZq3tnYUnvDGKkoTcFIlQwMlVHdI6ZVHkRkWTMW2Aehm3KDtjCMNfLqdcOwsgf0o73YKTijQmFwkDQSGLLnmR4A2TUBDasjJ4feyaJqR_I0CxrDE5Btypk_kLYilMkyVxs3-U_dze83JNLsydWdWT0EO4-5nGsrTyYgvuAnpXSrikgMtz3vmhPKsM3EaJLcppn8hWhzqSil0-J79CzO2etv7a5e9-OzYYVZRzzynHR3AKlweDUZyzt7Ota_DgOs",
+                    "q": "Data Scientist Paris since yesterday"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+since+yesterday&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-MAZf--FQBpDGNmfRY3Y-ztu30xPevEuO26nxAk1JPFEP1hBXahXQ22lwwaaL6tJDZp8wSC01hMgDf_4Ew2TyNJj5fOELaZq3tnYUnvDGKkoTcFIlQwMlVHdI6ZVHkRkWTMW2Aehm3KDtjCMNfLqdcOwsgf0o73YKTijQmFwkDQSGLLnmR4A2TUBDasjJ4feyaJqR_I0CxrDE5Btypk_kLYilMkyVxs3-U_dze83JNLsydWdWT0EO4-5nGsrTyYgvuAnpXSrikgMtz3vmhPKsM3EaJLcppn8hWhzqSil0-J79CzO2etv7a5e9-OzYYVZRzzynHR3AKlweDUZyzt7Ota_DgOs&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAC",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+since+yesterday&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-MAZf--FQBpDGNmfRY3Y-ztu30xPevEuO26nxAk1JPFEP1hBXahXQ22lwwaaL6tJDZp8wSC01hMgDf_4Ew2TyNJj5fOELaZq3tnYUnvDGKkoTcFIlQwMlVHdI6ZVHkRkWTMW2Aehm3KDtjCMNfLqdcOwsgf0o73YKTijQmFwkDQSGLLnmR4A2TUBDasjJ4feyaJqR_I0CxrDE5Btypk_kLYilMkyVxs3-U_dze83JNLsydWdWT0EO4-5nGsrTyYgvuAnpXSrikgMtz3vmhPKsM3EaJLcppn8hWhzqSil0-J79CzO2etv7a5e9-OzYYVZRzzynHR3AKlweDUZyzt7Ota_DgOs"
+                },
+                {
+                  "name": "Last 3 days",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-Iek24lCSoLuK3tMh8ACHd9yNa96sgZ9ebIbCpRYbArPNKpZhk4MEw7H2C4Z9YvNr1UHWerNj3mRtnFa_e7Yo-VIo2Kqhad6rQIBu7J62jM8KAolT3fXUC16Zp-FN14Bse51eyfllSsbmQm91Fil5Cq0Q4SYhCjN1TAlwfDsZEcLJrueMqJAIGaoYrJkPqpI06D4QXwSbz10CCTzpP0ouNkI4W2Hxyf5bto7P5NjOgImAmQiNgiTu8q_dhidEEMdZIho4ldAbKkdczHRkS3a6yEpesCRgkmzUnD1De2cvblJtp0oryAGhl-abphrSpjJbEHQA9W3208k8l8Mtg28uisjb-lk",
+                    "q": "Data Scientist Paris in the last 3 days"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+in+the+last+3+days&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-Iek24lCSoLuK3tMh8ACHd9yNa96sgZ9ebIbCpRYbArPNKpZhk4MEw7H2C4Z9YvNr1UHWerNj3mRtnFa_e7Yo-VIo2Kqhad6rQIBu7J62jM8KAolT3fXUC16Zp-FN14Bse51eyfllSsbmQm91Fil5Cq0Q4SYhCjN1TAlwfDsZEcLJrueMqJAIGaoYrJkPqpI06D4QXwSbz10CCTzpP0ouNkI4W2Hxyf5bto7P5NjOgImAmQiNgiTu8q_dhidEEMdZIho4ldAbKkdczHRkS3a6yEpesCRgkmzUnD1De2cvblJtp0oryAGhl-abphrSpjJbEHQA9W3208k8l8Mtg28uisjb-lk&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAD",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+in+the+last+3+days&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-Iek24lCSoLuK3tMh8ACHd9yNa96sgZ9ebIbCpRYbArPNKpZhk4MEw7H2C4Z9YvNr1UHWerNj3mRtnFa_e7Yo-VIo2Kqhad6rQIBu7J62jM8KAolT3fXUC16Zp-FN14Bse51eyfllSsbmQm91Fil5Cq0Q4SYhCjN1TAlwfDsZEcLJrueMqJAIGaoYrJkPqpI06D4QXwSbz10CCTzpP0ouNkI4W2Hxyf5bto7P5NjOgImAmQiNgiTu8q_dhidEEMdZIho4ldAbKkdczHRkS3a6yEpesCRgkmzUnD1De2cvblJtp0oryAGhl-abphrSpjJbEHQA9W3208k8l8Mtg28uisjb-lk"
+                },
+                {
+                  "name": "Last week",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jWcSMnidUVgAL5FG8eEfrLiCIgwFwcSpGWEk2gsClBDJScoJAXG5E13u-RqTf3K0cO1OU3-Dqko9loxm-h8X8ZVH47zDQ1O-qzwyKoeFP1c176uxgwMgsU1a33lydNZJM965vy--8oir9njC2c899LqKXqfrjB9KPVoktcrKlh2Gjo7d4rRxFU89_WmNaWs-hu5VvV74PjR2fswXjc-FVg34BKktnmW2Q3mcJ6yt8eZy9Ew8HpJytSuhRIALutX5sSwNY8CKYk6fuK9dXi-8hprGJtNeonu3gNBPZjlDrqv-Rg8W3BWgOPI07E_8J6JYq0_cx7gbo4_5wudR33rRk_zI2lE",
+                    "q": "Data Scientist Paris in the last week"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+in+the+last+week&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jWcSMnidUVgAL5FG8eEfrLiCIgwFwcSpGWEk2gsClBDJScoJAXG5E13u-RqTf3K0cO1OU3-Dqko9loxm-h8X8ZVH47zDQ1O-qzwyKoeFP1c176uxgwMgsU1a33lydNZJM965vy--8oir9njC2c899LqKXqfrjB9KPVoktcrKlh2Gjo7d4rRxFU89_WmNaWs-hu5VvV74PjR2fswXjc-FVg34BKktnmW2Q3mcJ6yt8eZy9Ew8HpJytSuhRIALutX5sSwNY8CKYk6fuK9dXi-8hprGJtNeonu3gNBPZjlDrqv-Rg8W3BWgOPI07E_8J6JYq0_cx7gbo4_5wudR33rRk_zI2lE&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAE",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+in+the+last+week&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jWcSMnidUVgAL5FG8eEfrLiCIgwFwcSpGWEk2gsClBDJScoJAXG5E13u-RqTf3K0cO1OU3-Dqko9loxm-h8X8ZVH47zDQ1O-qzwyKoeFP1c176uxgwMgsU1a33lydNZJM965vy--8oir9njC2c899LqKXqfrjB9KPVoktcrKlh2Gjo7d4rRxFU89_WmNaWs-hu5VvV74PjR2fswXjc-FVg34BKktnmW2Q3mcJ6yt8eZy9Ew8HpJytSuhRIALutX5sSwNY8CKYk6fuK9dXi-8hprGJtNeonu3gNBPZjlDrqv-Rg8W3BWgOPI07E_8J6JYq0_cx7gbo4_5wudR33rRk_zI2lE"
+                },
+                {
+                  "name": "Last month",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-nifmoepfz4k_zJkRRjWfMzmG-lrLGFlX53HiU-shxfAhKxPIs-QCpfI1qhJkb9tvikaXvKPEikNc5lnAUNUiq7Gy_LJv4zmKW1jNmpwgfoFVAT9rF8YuD7NXRZtsVVjUMceJKx3pHxW1E2sLsdo4VjXz2LyG12MMf-KYcZ4P822PrJBr5d2tjaxGlzlT5IwhfNWQ4b8gJ8mJo1PANaPKEmuFs-iSdJVBF5ARVybXcqjSgUg__uL6Va3dHN2WLzlvUaypLwMn_EZjfeul7DV_uEmiG5vRnJf0tXEbxe9ayj8Y-BucNfnj8Z17J-u7fNflu1UXQIBct6oTMoIQ-KFnx7o2j-c",
+                    "q": "Data Scientist Paris in the last month"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+in+the+last+month&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-nifmoepfz4k_zJkRRjWfMzmG-lrLGFlX53HiU-shxfAhKxPIs-QCpfI1qhJkb9tvikaXvKPEikNc5lnAUNUiq7Gy_LJv4zmKW1jNmpwgfoFVAT9rF8YuD7NXRZtsVVjUMceJKx3pHxW1E2sLsdo4VjXz2LyG12MMf-KYcZ4P822PrJBr5d2tjaxGlzlT5IwhfNWQ4b8gJ8mJo1PANaPKEmuFs-iSdJVBF5ARVybXcqjSgUg__uL6Va3dHN2WLzlvUaypLwMn_EZjfeul7DV_uEmiG5vRnJf0tXEbxe9ayj8Y-BucNfnj8Z17J-u7fNflu1UXQIBct6oTMoIQ-KFnx7o2j-c&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAF",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+in+the+last+month&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-nifmoepfz4k_zJkRRjWfMzmG-lrLGFlX53HiU-shxfAhKxPIs-QCpfI1qhJkb9tvikaXvKPEikNc5lnAUNUiq7Gy_LJv4zmKW1jNmpwgfoFVAT9rF8YuD7NXRZtsVVjUMceJKx3pHxW1E2sLsdo4VjXz2LyG12MMf-KYcZ4P822PrJBr5d2tjaxGlzlT5IwhfNWQ4b8gJ8mJo1PANaPKEmuFs-iSdJVBF5ARVybXcqjSgUg__uL6Va3dHN2WLzlvUaypLwMn_EZjfeul7DV_uEmiG5vRnJf0tXEbxe9ayj8Y-BucNfnj8Z17J-u7fNflu1UXQIBct6oTMoIQ-KFnx7o2j-c"
+                }
+              ]
+            },
+            {
+              "name": "Date posted",
+              "options": [
+                {
+                  "name": "Yesterday",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-MAZf--FQBpDGNmfRY3Y-ztu30xPevEuO26nxAk1JPFEP1hBXahXQ22lwwaaL6tJDZp8wSC01hMgDf_4Ew2TyNJj5fOELaZq3tnYUnvDGKkoTcFIlQwMlVHdI6ZVHkRkWTMW2Aehm3KDtjCMNfLqdcOwsgf0o73YKTijQmFwkDQSGLLnmR4A2TUBDasjJ4feyaJqR_I0CxrDE5Btypk_kLYilMkyVxs3-U_dze83JNLsydWdWT0EO4-5nGsrTyYgvuAnpXSrikgMtz3vmhPKsM3EaJLcppn8hWhzqSil0-J79CzO2etv7a5e9-OzYYVZRzzynHR3AKlweDUZyzt7Ota_DgOs",
+                    "q": "Data Scientist Paris since yesterday"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+since+yesterday&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-MAZf--FQBpDGNmfRY3Y-ztu30xPevEuO26nxAk1JPFEP1hBXahXQ22lwwaaL6tJDZp8wSC01hMgDf_4Ew2TyNJj5fOELaZq3tnYUnvDGKkoTcFIlQwMlVHdI6ZVHkRkWTMW2Aehm3KDtjCMNfLqdcOwsgf0o73YKTijQmFwkDQSGLLnmR4A2TUBDasjJ4feyaJqR_I0CxrDE5Btypk_kLYilMkyVxs3-U_dze83JNLsydWdWT0EO4-5nGsrTyYgvuAnpXSrikgMtz3vmhPKsM3EaJLcppn8hWhzqSil0-J79CzO2etv7a5e9-OzYYVZRzzynHR3AKlweDUZyzt7Ota_DgOs&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAC",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+since+yesterday&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-MAZf--FQBpDGNmfRY3Y-ztu30xPevEuO26nxAk1JPFEP1hBXahXQ22lwwaaL6tJDZp8wSC01hMgDf_4Ew2TyNJj5fOELaZq3tnYUnvDGKkoTcFIlQwMlVHdI6ZVHkRkWTMW2Aehm3KDtjCMNfLqdcOwsgf0o73YKTijQmFwkDQSGLLnmR4A2TUBDasjJ4feyaJqR_I0CxrDE5Btypk_kLYilMkyVxs3-U_dze83JNLsydWdWT0EO4-5nGsrTyYgvuAnpXSrikgMtz3vmhPKsM3EaJLcppn8hWhzqSil0-J79CzO2etv7a5e9-OzYYVZRzzynHR3AKlweDUZyzt7Ota_DgOs"
+                },
+                {
+                  "name": "Last 3 days",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-Iek24lCSoLuK3tMh8ACHd9yNa96sgZ9ebIbCpRYbArPNKpZhk4MEw7H2C4Z9YvNr1UHWerNj3mRtnFa_e7Yo-VIo2Kqhad6rQIBu7J62jM8KAolT3fXUC16Zp-FN14Bse51eyfllSsbmQm91Fil5Cq0Q4SYhCjN1TAlwfDsZEcLJrueMqJAIGaoYrJkPqpI06D4QXwSbz10CCTzpP0ouNkI4W2Hxyf5bto7P5NjOgImAmQiNgiTu8q_dhidEEMdZIho4ldAbKkdczHRkS3a6yEpesCRgkmzUnD1De2cvblJtp0oryAGhl-abphrSpjJbEHQA9W3208k8l8Mtg28uisjb-lk",
+                    "q": "Data Scientist Paris in the last 3 days"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+in+the+last+3+days&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-Iek24lCSoLuK3tMh8ACHd9yNa96sgZ9ebIbCpRYbArPNKpZhk4MEw7H2C4Z9YvNr1UHWerNj3mRtnFa_e7Yo-VIo2Kqhad6rQIBu7J62jM8KAolT3fXUC16Zp-FN14Bse51eyfllSsbmQm91Fil5Cq0Q4SYhCjN1TAlwfDsZEcLJrueMqJAIGaoYrJkPqpI06D4QXwSbz10CCTzpP0ouNkI4W2Hxyf5bto7P5NjOgImAmQiNgiTu8q_dhidEEMdZIho4ldAbKkdczHRkS3a6yEpesCRgkmzUnD1De2cvblJtp0oryAGhl-abphrSpjJbEHQA9W3208k8l8Mtg28uisjb-lk&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAD",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+in+the+last+3+days&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-Iek24lCSoLuK3tMh8ACHd9yNa96sgZ9ebIbCpRYbArPNKpZhk4MEw7H2C4Z9YvNr1UHWerNj3mRtnFa_e7Yo-VIo2Kqhad6rQIBu7J62jM8KAolT3fXUC16Zp-FN14Bse51eyfllSsbmQm91Fil5Cq0Q4SYhCjN1TAlwfDsZEcLJrueMqJAIGaoYrJkPqpI06D4QXwSbz10CCTzpP0ouNkI4W2Hxyf5bto7P5NjOgImAmQiNgiTu8q_dhidEEMdZIho4ldAbKkdczHRkS3a6yEpesCRgkmzUnD1De2cvblJtp0oryAGhl-abphrSpjJbEHQA9W3208k8l8Mtg28uisjb-lk"
+                },
+                {
+                  "name": "Last week",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jWcSMnidUVgAL5FG8eEfrLiCIgwFwcSpGWEk2gsClBDJScoJAXG5E13u-RqTf3K0cO1OU3-Dqko9loxm-h8X8ZVH47zDQ1O-qzwyKoeFP1c176uxgwMgsU1a33lydNZJM965vy--8oir9njC2c899LqKXqfrjB9KPVoktcrKlh2Gjo7d4rRxFU89_WmNaWs-hu5VvV74PjR2fswXjc-FVg34BKktnmW2Q3mcJ6yt8eZy9Ew8HpJytSuhRIALutX5sSwNY8CKYk6fuK9dXi-8hprGJtNeonu3gNBPZjlDrqv-Rg8W3BWgOPI07E_8J6JYq0_cx7gbo4_5wudR33rRk_zI2lE",
+                    "q": "Data Scientist Paris in the last week"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+in+the+last+week&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jWcSMnidUVgAL5FG8eEfrLiCIgwFwcSpGWEk2gsClBDJScoJAXG5E13u-RqTf3K0cO1OU3-Dqko9loxm-h8X8ZVH47zDQ1O-qzwyKoeFP1c176uxgwMgsU1a33lydNZJM965vy--8oir9njC2c899LqKXqfrjB9KPVoktcrKlh2Gjo7d4rRxFU89_WmNaWs-hu5VvV74PjR2fswXjc-FVg34BKktnmW2Q3mcJ6yt8eZy9Ew8HpJytSuhRIALutX5sSwNY8CKYk6fuK9dXi-8hprGJtNeonu3gNBPZjlDrqv-Rg8W3BWgOPI07E_8J6JYq0_cx7gbo4_5wudR33rRk_zI2lE&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAE",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+in+the+last+week&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jWcSMnidUVgAL5FG8eEfrLiCIgwFwcSpGWEk2gsClBDJScoJAXG5E13u-RqTf3K0cO1OU3-Dqko9loxm-h8X8ZVH47zDQ1O-qzwyKoeFP1c176uxgwMgsU1a33lydNZJM965vy--8oir9njC2c899LqKXqfrjB9KPVoktcrKlh2Gjo7d4rRxFU89_WmNaWs-hu5VvV74PjR2fswXjc-FVg34BKktnmW2Q3mcJ6yt8eZy9Ew8HpJytSuhRIALutX5sSwNY8CKYk6fuK9dXi-8hprGJtNeonu3gNBPZjlDrqv-Rg8W3BWgOPI07E_8J6JYq0_cx7gbo4_5wudR33rRk_zI2lE"
+                },
+                {
+                  "name": "Last month",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-nifmoepfz4k_zJkRRjWfMzmG-lrLGFlX53HiU-shxfAhKxPIs-QCpfI1qhJkb9tvikaXvKPEikNc5lnAUNUiq7Gy_LJv4zmKW1jNmpwgfoFVAT9rF8YuD7NXRZtsVVjUMceJKx3pHxW1E2sLsdo4VjXz2LyG12MMf-KYcZ4P822PrJBr5d2tjaxGlzlT5IwhfNWQ4b8gJ8mJo1PANaPKEmuFs-iSdJVBF5ARVybXcqjSgUg__uL6Va3dHN2WLzlvUaypLwMn_EZjfeul7DV_uEmiG5vRnJf0tXEbxe9ayj8Y-BucNfnj8Z17J-u7fNflu1UXQIBct6oTMoIQ-KFnx7o2j-c",
+                    "q": "Data Scientist Paris in the last month"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+in+the+last+month&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-nifmoepfz4k_zJkRRjWfMzmG-lrLGFlX53HiU-shxfAhKxPIs-QCpfI1qhJkb9tvikaXvKPEikNc5lnAUNUiq7Gy_LJv4zmKW1jNmpwgfoFVAT9rF8YuD7NXRZtsVVjUMceJKx3pHxW1E2sLsdo4VjXz2LyG12MMf-KYcZ4P822PrJBr5d2tjaxGlzlT5IwhfNWQ4b8gJ8mJo1PANaPKEmuFs-iSdJVBF5ARVybXcqjSgUg__uL6Va3dHN2WLzlvUaypLwMn_EZjfeul7DV_uEmiG5vRnJf0tXEbxe9ayj8Y-BucNfnj8Z17J-u7fNflu1UXQIBct6oTMoIQ-KFnx7o2j-c&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFhAF",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+in+the+last+month&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-nifmoepfz4k_zJkRRjWfMzmG-lrLGFlX53HiU-shxfAhKxPIs-QCpfI1qhJkb9tvikaXvKPEikNc5lnAUNUiq7Gy_LJv4zmKW1jNmpwgfoFVAT9rF8YuD7NXRZtsVVjUMceJKx3pHxW1E2sLsdo4VjXz2LyG12MMf-KYcZ4P822PrJBr5d2tjaxGlzlT5IwhfNWQ4b8gJ8mJo1PANaPKEmuFs-iSdJVBF5ARVybXcqjSgUg__uL6Va3dHN2WLzlvUaypLwMn_EZjfeul7DV_uEmiG5vRnJf0tXEbxe9ayj8Y-BucNfnj8Z17J-u7fNflu1UXQIBct6oTMoIQ-KFnx7o2j-c"
+                }
+              ]
+            },
+            {
+              "name": "Job type",
+              "options": [
+                {
+                  "name": "Full time",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCG1OfGSS7S_613grk0sqZXFWWGKl_xWNPKhP8o_o7bRDtrWF-t7-mxeGgX2BXDBfsLpmLTAkEEcJn8rpoA7FZ6X14upTZ8tXkmSPWlg8bSj7CNQPrbETso-RSAYWz9guLfYnZmc7cGpYHyNE2dI7kXhqf_iUCuskKGAk3m1Gt4SEmHaStntF66Faqz4ZJ4buC8p6v0B7MinR6pZOsivZFgLqQdVA3YFF1UZjAcfgpR_pTnGOrzJ9lOSbuurX0T5dk3GwftVJEx-TfUkJx47Dl45QGJZNw",
+                    "q": "Data Scientist Paris full time"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+full+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCG1OfGSS7S_613grk0sqZXFWWGKl_xWNPKhP8o_o7bRDtrWF-t7-mxeGgX2BXDBfsLpmLTAkEEcJn8rpoA7FZ6X14upTZ8tXkmSPWlg8bSj7CNQPrbETso-RSAYWz9guLfYnZmc7cGpYHyNE2dI7kXhqf_iUCuskKGAk3m1Gt4SEmHaStntF66Faqz4ZJ4buC8p6v0B7MinR6pZOsivZFgLqQdVA3YFF1UZjAcfgpR_pTnGOrzJ9lOSbuurX0T5dk3GwftVJEx-TfUkJx47Dl45QGJZNw&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAC",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+full+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCG1OfGSS7S_613grk0sqZXFWWGKl_xWNPKhP8o_o7bRDtrWF-t7-mxeGgX2BXDBfsLpmLTAkEEcJn8rpoA7FZ6X14upTZ8tXkmSPWlg8bSj7CNQPrbETso-RSAYWz9guLfYnZmc7cGpYHyNE2dI7kXhqf_iUCuskKGAk3m1Gt4SEmHaStntF66Faqz4ZJ4buC8p6v0B7MinR6pZOsivZFgLqQdVA3YFF1UZjAcfgpR_pTnGOrzJ9lOSbuurX0T5dk3GwftVJEx-TfUkJx47Dl45QGJZNw"
+                },
+                {
+                  "name": "Part time",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCH8CiTk1sebzYgsaE4KkmTqa2zxZDi-YM8LqRzCP4dVfWssiK7C5WWAa3ixZC8i1XKtBwhBMeNYNljXFaAEzkoopf2nbOZDixvvsGk3kq2N3EFaBmTwe0hhn8OdwpKX2iWzh_Tdmq3Vo2tDWDoSj8wWQvySfaChUq3kMQjN18E6S7BsHTgJ5VXCr5E2oLzvPnb62D_nEsjdPbIEe7P-4-dz2IOLwhsk_rdK0D7sKxWwI3mOWyt9DTzqdd_ibRxYrfXmpl6t_c5Ufwu_g0zzHSu2j2ZLpA",
+                    "q": "Data Scientist Paris part time"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+part+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCH8CiTk1sebzYgsaE4KkmTqa2zxZDi-YM8LqRzCP4dVfWssiK7C5WWAa3ixZC8i1XKtBwhBMeNYNljXFaAEzkoopf2nbOZDixvvsGk3kq2N3EFaBmTwe0hhn8OdwpKX2iWzh_Tdmq3Vo2tDWDoSj8wWQvySfaChUq3kMQjN18E6S7BsHTgJ5VXCr5E2oLzvPnb62D_nEsjdPbIEe7P-4-dz2IOLwhsk_rdK0D7sKxWwI3mOWyt9DTzqdd_ibRxYrfXmpl6t_c5Ufwu_g0zzHSu2j2ZLpA&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAD",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+part+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCH8CiTk1sebzYgsaE4KkmTqa2zxZDi-YM8LqRzCP4dVfWssiK7C5WWAa3ixZC8i1XKtBwhBMeNYNljXFaAEzkoopf2nbOZDixvvsGk3kq2N3EFaBmTwe0hhn8OdwpKX2iWzh_Tdmq3Vo2tDWDoSj8wWQvySfaChUq3kMQjN18E6S7BsHTgJ5VXCr5E2oLzvPnb62D_nEsjdPbIEe7P-4-dz2IOLwhsk_rdK0D7sKxWwI3mOWyt9DTzqdd_ibRxYrfXmpl6t_c5Ufwu_g0zzHSu2j2ZLpA"
+                },
+                {
+                  "name": "Contract",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jpKqmIBzOF173l07jtzOBdhjNcWOymftJ80gxbNPZPbn8ScG3shh7IF75u1XzzKadiaLHknrBG3D_BLjp5tyQ6CAFhs50oaPTyMUB12hKe-qiYSyDf0tjcbB1OirSvuE_oaPSgPUWEs3jvWFnmoLTpstxGEKUOXzBbzZl3XixTXfQmmDsTIAS2pS43O30cqw4-cSmWkEhJ34ddEr1FfotbwEl5ZQUf9GSujaPcG_V_N5lvZc1aiiInqyJFSKdPM4VOb_kuj-K32l5ghOV3UIUuLFR7YyQUGHb7xseMWpuHmi1mau9mUandIN1gqgGvwnIfpKtg",
+                    "q": "Data Scientist Paris contract"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+contract&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jpKqmIBzOF173l07jtzOBdhjNcWOymftJ80gxbNPZPbn8ScG3shh7IF75u1XzzKadiaLHknrBG3D_BLjp5tyQ6CAFhs50oaPTyMUB12hKe-qiYSyDf0tjcbB1OirSvuE_oaPSgPUWEs3jvWFnmoLTpstxGEKUOXzBbzZl3XixTXfQmmDsTIAS2pS43O30cqw4-cSmWkEhJ34ddEr1FfotbwEl5ZQUf9GSujaPcG_V_N5lvZc1aiiInqyJFSKdPM4VOb_kuj-K32l5ghOV3UIUuLFR7YyQUGHb7xseMWpuHmi1mau9mUandIN1gqgGvwnIfpKtg&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAE",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+contract&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jpKqmIBzOF173l07jtzOBdhjNcWOymftJ80gxbNPZPbn8ScG3shh7IF75u1XzzKadiaLHknrBG3D_BLjp5tyQ6CAFhs50oaPTyMUB12hKe-qiYSyDf0tjcbB1OirSvuE_oaPSgPUWEs3jvWFnmoLTpstxGEKUOXzBbzZl3XixTXfQmmDsTIAS2pS43O30cqw4-cSmWkEhJ34ddEr1FfotbwEl5ZQUf9GSujaPcG_V_N5lvZc1aiiInqyJFSKdPM4VOb_kuj-K32l5ghOV3UIUuLFR7YyQUGHb7xseMWpuHmi1mau9mUandIN1gqgGvwnIfpKtg"
+                },
+                {
+                  "name": "Internship",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-pxsR68rjvXROWlkhD4FwHQtJPBpqpVy9xNAreR7tsXY8xngtfoM9sE6DbzxtGDLrOH7YdpMiKsIbaDXjF2JMN8tSKsgMomd_hn2JDsY9PiqSNGXMNibXKB_7swTtAQ6tJkaJCyZ7nXC5BrWt7kxLnDF9GxHxtQHAfMCZlz3OGoG7jOr_YREsp1QnrI3Qq2BwZxseDtlROr3uXJm8QTjcX858XenYCGZ1yYv2sFjrmS1qpc3190VZejaTW4YKnEfgESHwKrJSBx5HXrxF9ub5edjikenQK2eqBIzbWrZB1O1vTTc0-kT8WZhjTsKIyvcR3n-3xw",
+                    "q": "Data Scientist Paris internship"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+internship&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-pxsR68rjvXROWlkhD4FwHQtJPBpqpVy9xNAreR7tsXY8xngtfoM9sE6DbzxtGDLrOH7YdpMiKsIbaDXjF2JMN8tSKsgMomd_hn2JDsY9PiqSNGXMNibXKB_7swTtAQ6tJkaJCyZ7nXC5BrWt7kxLnDF9GxHxtQHAfMCZlz3OGoG7jOr_YREsp1QnrI3Qq2BwZxseDtlROr3uXJm8QTjcX858XenYCGZ1yYv2sFjrmS1qpc3190VZejaTW4YKnEfgESHwKrJSBx5HXrxF9ub5edjikenQK2eqBIzbWrZB1O1vTTc0-kT8WZhjTsKIyvcR3n-3xw&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAF",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+internship&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-pxsR68rjvXROWlkhD4FwHQtJPBpqpVy9xNAreR7tsXY8xngtfoM9sE6DbzxtGDLrOH7YdpMiKsIbaDXjF2JMN8tSKsgMomd_hn2JDsY9PiqSNGXMNibXKB_7swTtAQ6tJkaJCyZ7nXC5BrWt7kxLnDF9GxHxtQHAfMCZlz3OGoG7jOr_YREsp1QnrI3Qq2BwZxseDtlROr3uXJm8QTjcX858XenYCGZ1yYv2sFjrmS1qpc3190VZejaTW4YKnEfgESHwKrJSBx5HXrxF9ub5edjikenQK2eqBIzbWrZB1O1vTTc0-kT8WZhjTsKIyvcR3n-3xw"
+                }
+              ]
+            },
+            {
+              "name": "Job type",
+              "options": [
+                {
+                  "name": "Full time",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCG1OfGSS7S_613grk0sqZXFWWGKl_xWNPKhP8o_o7bRDtrWF-t7-mxeGgX2BXDBfsLpmLTAkEEcJn8rpoA7FZ6X14upTZ8tXkmSPWlg8bSj7CNQPrbETso-RSAYWz9guLfYnZmc7cGpYHyNE2dI7kXhqf_iUCuskKGAk3m1Gt4SEmHaStntF66Faqz4ZJ4buC8p6v0B7MinR6pZOsivZFgLqQdVA3YFF1UZjAcfgpR_pTnGOrzJ9lOSbuurX0T5dk3GwftVJEx-TfUkJx47Dl45QGJZNw",
+                    "q": "Data Scientist Paris full time"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+full+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCG1OfGSS7S_613grk0sqZXFWWGKl_xWNPKhP8o_o7bRDtrWF-t7-mxeGgX2BXDBfsLpmLTAkEEcJn8rpoA7FZ6X14upTZ8tXkmSPWlg8bSj7CNQPrbETso-RSAYWz9guLfYnZmc7cGpYHyNE2dI7kXhqf_iUCuskKGAk3m1Gt4SEmHaStntF66Faqz4ZJ4buC8p6v0B7MinR6pZOsivZFgLqQdVA3YFF1UZjAcfgpR_pTnGOrzJ9lOSbuurX0T5dk3GwftVJEx-TfUkJx47Dl45QGJZNw&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAC",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+full+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCG1OfGSS7S_613grk0sqZXFWWGKl_xWNPKhP8o_o7bRDtrWF-t7-mxeGgX2BXDBfsLpmLTAkEEcJn8rpoA7FZ6X14upTZ8tXkmSPWlg8bSj7CNQPrbETso-RSAYWz9guLfYnZmc7cGpYHyNE2dI7kXhqf_iUCuskKGAk3m1Gt4SEmHaStntF66Faqz4ZJ4buC8p6v0B7MinR6pZOsivZFgLqQdVA3YFF1UZjAcfgpR_pTnGOrzJ9lOSbuurX0T5dk3GwftVJEx-TfUkJx47Dl45QGJZNw"
+                },
+                {
+                  "name": "Part time",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCH8CiTk1sebzYgsaE4KkmTqa2zxZDi-YM8LqRzCP4dVfWssiK7C5WWAa3ixZC8i1XKtBwhBMeNYNljXFaAEzkoopf2nbOZDixvvsGk3kq2N3EFaBmTwe0hhn8OdwpKX2iWzh_Tdmq3Vo2tDWDoSj8wWQvySfaChUq3kMQjN18E6S7BsHTgJ5VXCr5E2oLzvPnb62D_nEsjdPbIEe7P-4-dz2IOLwhsk_rdK0D7sKxWwI3mOWyt9DTzqdd_ibRxYrfXmpl6t_c5Ufwu_g0zzHSu2j2ZLpA",
+                    "q": "Data Scientist Paris part time"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+part+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCH8CiTk1sebzYgsaE4KkmTqa2zxZDi-YM8LqRzCP4dVfWssiK7C5WWAa3ixZC8i1XKtBwhBMeNYNljXFaAEzkoopf2nbOZDixvvsGk3kq2N3EFaBmTwe0hhn8OdwpKX2iWzh_Tdmq3Vo2tDWDoSj8wWQvySfaChUq3kMQjN18E6S7BsHTgJ5VXCr5E2oLzvPnb62D_nEsjdPbIEe7P-4-dz2IOLwhsk_rdK0D7sKxWwI3mOWyt9DTzqdd_ibRxYrfXmpl6t_c5Ufwu_g0zzHSu2j2ZLpA&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAD",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+part+time&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-K_dY-9XsaJCjHJBRTBsrADZ5l7gg2RIFGll7HUf3vCH8CiTk1sebzYgsaE4KkmTqa2zxZDi-YM8LqRzCP4dVfWssiK7C5WWAa3ixZC8i1XKtBwhBMeNYNljXFaAEzkoopf2nbOZDixvvsGk3kq2N3EFaBmTwe0hhn8OdwpKX2iWzh_Tdmq3Vo2tDWDoSj8wWQvySfaChUq3kMQjN18E6S7BsHTgJ5VXCr5E2oLzvPnb62D_nEsjdPbIEe7P-4-dz2IOLwhsk_rdK0D7sKxWwI3mOWyt9DTzqdd_ibRxYrfXmpl6t_c5Ufwu_g0zzHSu2j2ZLpA"
+                },
+                {
+                  "name": "Contract",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jpKqmIBzOF173l07jtzOBdhjNcWOymftJ80gxbNPZPbn8ScG3shh7IF75u1XzzKadiaLHknrBG3D_BLjp5tyQ6CAFhs50oaPTyMUB12hKe-qiYSyDf0tjcbB1OirSvuE_oaPSgPUWEs3jvWFnmoLTpstxGEKUOXzBbzZl3XixTXfQmmDsTIAS2pS43O30cqw4-cSmWkEhJ34ddEr1FfotbwEl5ZQUf9GSujaPcG_V_N5lvZc1aiiInqyJFSKdPM4VOb_kuj-K32l5ghOV3UIUuLFR7YyQUGHb7xseMWpuHmi1mau9mUandIN1gqgGvwnIfpKtg",
+                    "q": "Data Scientist Paris contract"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+contract&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jpKqmIBzOF173l07jtzOBdhjNcWOymftJ80gxbNPZPbn8ScG3shh7IF75u1XzzKadiaLHknrBG3D_BLjp5tyQ6CAFhs50oaPTyMUB12hKe-qiYSyDf0tjcbB1OirSvuE_oaPSgPUWEs3jvWFnmoLTpstxGEKUOXzBbzZl3XixTXfQmmDsTIAS2pS43O30cqw4-cSmWkEhJ34ddEr1FfotbwEl5ZQUf9GSujaPcG_V_N5lvZc1aiiInqyJFSKdPM4VOb_kuj-K32l5ghOV3UIUuLFR7YyQUGHb7xseMWpuHmi1mau9mUandIN1gqgGvwnIfpKtg&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAE",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+contract&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-jpKqmIBzOF173l07jtzOBdhjNcWOymftJ80gxbNPZPbn8ScG3shh7IF75u1XzzKadiaLHknrBG3D_BLjp5tyQ6CAFhs50oaPTyMUB12hKe-qiYSyDf0tjcbB1OirSvuE_oaPSgPUWEs3jvWFnmoLTpstxGEKUOXzBbzZl3XixTXfQmmDsTIAS2pS43O30cqw4-cSmWkEhJ34ddEr1FfotbwEl5ZQUf9GSujaPcG_V_N5lvZc1aiiInqyJFSKdPM4VOb_kuj-K32l5ghOV3UIUuLFR7YyQUGHb7xseMWpuHmi1mau9mUandIN1gqgGvwnIfpKtg"
+                },
+                {
+                  "name": "Internship",
+                  "parameters": {
+                    "uds": "ALYpb_ncDc7jTlmw6Mmq7NjuX5c-pxsR68rjvXROWlkhD4FwHQtJPBpqpVy9xNAreR7tsXY8xngtfoM9sE6DbzxtGDLrOH7YdpMiKsIbaDXjF2JMN8tSKsgMomd_hn2JDsY9PiqSNGXMNibXKB_7swTtAQ6tJkaJCyZ7nXC5BrWt7kxLnDF9GxHxtQHAfMCZlz3OGoG7jOr_YREsp1QnrI3Qq2BwZxseDtlROr3uXJm8QTjcX858XenYCGZ1yYv2sFjrmS1qpc3190VZejaTW4YKnEfgESHwKrJSBx5HXrxF9ub5edjikenQK2eqBIzbWrZB1O1vTTc0-kT8WZhjTsKIyvcR3n-3xw",
+                    "q": "Data Scientist Paris internship"
+                  },
+                  "link": "https://www.google.com/search?sca_esv=02d96f4dae5a5963&hl=en&gl=fr&q=Data+Scientist+Paris+internship&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-pxsR68rjvXROWlkhD4FwHQtJPBpqpVy9xNAreR7tsXY8xngtfoM9sE6DbzxtGDLrOH7YdpMiKsIbaDXjF2JMN8tSKsgMomd_hn2JDsY9PiqSNGXMNibXKB_7swTtAQ6tJkaJCyZ7nXC5BrWt7kxLnDF9GxHxtQHAfMCZlz3OGoG7jOr_YREsp1QnrI3Qq2BwZxseDtlROr3uXJm8QTjcX858XenYCGZ1yYv2sFjrmS1qpc3190VZejaTW4YKnEfgESHwKrJSBx5HXrxF9ub5edjikenQK2eqBIzbWrZB1O1vTTc0-kT8WZhjTsKIyvcR3n-3xw&udm=8&sa=X&ved=2ahUKEwj414nuw7CSAxVmJEQIHZIlMTIQkbEKegQIFxAF",
+                  "serpapi_link": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&q=Data+Scientist+Paris+internship&uds=ALYpb_ncDc7jTlmw6Mmq7NjuX5c-pxsR68rjvXROWlkhD4FwHQtJPBpqpVy9xNAreR7tsXY8xngtfoM9sE6DbzxtGDLrOH7YdpMiKsIbaDXjF2JMN8tSKsgMomd_hn2JDsY9PiqSNGXMNibXKB_7swTtAQ6tJkaJCyZ7nXC5BrWt7kxLnDF9GxHxtQHAfMCZlz3OGoG7jOr_YREsp1QnrI3Qq2BwZxseDtlROr3uXJm8QTjcX858XenYCGZ1yYv2sFjrmS1qpc3190VZejaTW4YKnEfgESHwKrJSBx5HXrxF9ub5edjikenQK2eqBIzbWrZB1O1vTTc0-kT8WZhjTsKIyvcR3n-3xw"
+                }
+              ]
+            }
+          ],
+          "jobs_results": [
+            {
+              "title": "Accelerator Data Scientist (Paris)",
+              "company_name": "Sanofi",
+              "location": "Paris",
+              "via": "Sanofi",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=un5D4FikZ_odJyDbAAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_x3NsQoCMQwAUFxvcXfKqIKtCA7qJAiCk3AfcKQh9nrUpjQZ7hf8a9Hlra_7LLrTlYgzNzRpcEND6ClxsaQG6ye2pBvYwUMCKGOjEaTAXSRmXl1Gs6pn71Wzi2poiRzJ20vhILOfJOiPQUdsXDMaD4fjfna1xO2yxyKvBKnAf_kCQydJiowAAAA&shmds=v1_ATWGeeM5eJmmldK9UoJ2Jt5SlvZCxBxR-3qDUYNxMJqD81em0A&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=un5D4FikZ_odJyDbAAAAAA%3D%3D",
+              "extensions": [
+                "1 day ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "1 day ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Job title: Data Scientist\n• Location: Paris\n• Hybrid\n\nAbout the job\n\nWe are a global biopharmaceutical company focused on human health. Our purpose is to find treatment to fight pain and ease suffering. We combine breakthrough science and advanced technology to develop life-changing medicines and vaccines.\n\nDigital & Data is at the heart of Sanofi: our ambition is to be the leading digital healthcare platform to develop & deliver medicine faster, enable healthcare professionals to improve treatments and help patients improve their health. Our scale, strong connections within health ecosystems across leveraging the world, and ability to leverage Sanofi’s capabilities make us the best place to push the boundaries of medicine through technology.\n\nWe are building Digital R&D products developing outstanding capabilities that will participate in new drug discovery together with scientists, in trial efficiency and cycle time reduction, leveraging Data Analytics and Artificial Intelligence.\n\nMain responsibilities:\n• Gather relevant data from various sources, and perform relevant analysis to propose and implement relevant data models for each business case \n• Apply statistical methods and machine learning techniques to extract insights from datasets\n• Design, implement and fine-tune AI/ML models using various algorithms and tools\n• Presenting findings through clear and informative charts, graphs, and dashboards\n• Support senior team members in understanding business teams requirements, and translate them into technical needs\n• Staying updated with the latest trends, tools, and techniques in the field of data science\n\nYou are a dynamic data scientist interested in challenging the status quo to ensure development and impact of Sanofi's AI solutions for the patients of tomorrow. You are an influencer and leader who has deployed AI/ML solutions applying state-of-the art algorithms with technically robust lifecycle management. You have a keen eye for improvement opportunities and a demonstrated ability to deliver AI/ML solutions while working across different technologies and in a cross-functional environment.\n\nAbout you\n\nExperience:  \n• Over 3 years of experience of handling data science projects in varied business contexts, with experience in healthcare being a strong plus\n• Experience in developing deployable models and AI solutions\n• Demonstrated ability to perform exploratory data analysis and create visualizations \n• Experience in production-ready software development\n\nSoft skills:\n• Strong curiosity and eagerness to learn new concepts and technologies \n• Good communication skills, both written and verbal \n• Problem-solving ability and analytical thinking \n• Attention to detail in data handling and analysis \n• Ability to contribute to a diverse and inclusive team environment \n• Willingness to ask questions and seek guidance when needed \n• Presentation skills for sharing data insights with team members \n\nTechnical skills:\n• Strong knowledge within most of the following areas: supervised learning, unsupervised learning, deep learning, LLMs, time series forecasting, Bayesian statistics, optimization\n• Proficient in Python programming and familiarity with big data concepts and tools\n• Comfortable working in cloud and high-performance computing environments (e.g. AWS, GCP, Databricks, Apache Spark)\n• Ability to use standard visualization tools to create reports and dashboards (such as Tableau, PowerBI, …)\n• Awareness of responsible AI principles and AI regulations\n• Knowledge of software development practices and version control (e.g., Git)\n\nEducation:\n• Preferred qualifications: Master’s Degree or PhD in mathematics, computer science, engineering, physics, statistics, or a related quantitative discipline with strong coding skills\n\nLanguages : English, French\n\nWhy choose us?\n• We provide a highly collaborative environment, with an opportunity to work with a world class team.\n• Contribute to a company that is not only a leader in healthcare but also a pioneer in digital transformation, shaping the future of global health. \n• Bring the miracles of science to life alongside a supportive, future-focused team.\n• Discover endless opportunities to grow your talent and drive your career, whether it’s through a promotion or lateral move, at home or internationally.\n• Enjoy a thoughtful, well-crafted rewards package that recognizes your contribution and amplifies your impact.\n• Take good care of yourself and your family, with a wide range of health and wellbeing benefits including high-quality healthcare, prevention and wellness programs and at least 14 weeks’ gender-neutral parental leave.\n• Play an instrumental part in creating best practice within our manufacturing facility\n\nPursue Progress. Discover Extraordinary.\n\nProgress doesn’t happen without people – people from different backgrounds, in different locations, doing different roles, all united by one thing: a desire to make miracles happen. You can be one of those people. Chasing change, embracing new ideas and exploring all the opportunities we have to offer. Let’s pursue progress. And let’s discover extraordinary together.\n\nAt Sanofi, we provide equal opportunities to all regardless of race, color, ancestry, religion, sex, national origin, sexual orientation, age, citizenship, marital status, disability, or gender identity.\n\nWatch our ALL IN video and check out our Diversity Equity and Inclusion actions at sanofi.com!\n\nnull",
+              "apply_options": [
+                {
+                  "title": "Sanofi",
+                  "link": "https://jobs.sanofi.com/en/job/paris/accelerator-data-scientist-paris/2649/34616537920?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "DevITJobs",
+                  "link": "https://devitjobs.fr/jobs/Sanofi-EU-Data-Scientist---Accelerator-Paris?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jobrapido",
+                  "link": "https://fr.jobrapido.com/jobpreview/2019565488119480320?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jobs In France - Xpat Jobs",
+                  "link": "https://france.xpatjobs.com/jobs/Accelerator-Digital-Lead-Data-Scientist-Paris/65507x8a9ac571d42b?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJBY2NlbGVyYXRvciBEYXRhIFNjaWVudGlzdCAoUGFyaXMpIiwiY29tcGFueV9uYW1lIjoiU2Fub2ZpIiwiYWRkcmVzc19jaXR5IjoiUGFyaXMiLCJodGlkb2NpZCI6InVuNUQ0RmlrWl9vZEp5RGJBQUFBQUE9PSIsImdsIjoiZnIiLCJobCI6ImVuIn0="
+            },
+            {
+              "title": "Data Scientist F/H",
+              "company_name": "APHP",
+              "location": "Paris",
+              "via": "APHP",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=1mN10KXg3LQApj1QAAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXEsQrCMBAA0L3gDzjdqmBSBBedBNHiFPADyiUcSSTNhdyB_XzpG97wGw4PVIRPyFQ1i8LTTnCCN3sQwh4ScIUXcyy0vyXVJldrRYqJoqg5mMCL5UqeV_tlL1uzJOzUCirN58u4mlbjcXd3k4NcwWHP8gfO3uOzeQAAAA&shmds=v1_ATWGeeP6GjovVc0sBY0TRIuERnCiSDokARi--Z5HNb7F46lzBA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=1mN10KXg3LQApj1QAAAAAA%3D%3D",
+              "extensions": [
+                "2 days ago"
+              ],
+              "detected_extensions": {
+                "posted_at": "2 days ago"
+              },
+              "description": "Métier\nExpertise SI - Réseaux télécom & système - Infrastructure - Data\nType de contrat\nTitulaire ou CDD\nPrésentation du service\n\nLa Direction des Services Numériques (DSN) de l’AP-HP fournit des services numériques sécurisés aux professionnels et patients. Elle développe et gère plusieurs centaines de solutions, dont le dossier patient, la biologie, l’imagerie, l’espace patient et la gestion hospitalière, sur 70 000 postes. Elle administre ses infrastructures (réseau, data centers, téléphonie, wifi) et favorise la réutilisation des données de santé. Avec plus de 500 professionnels et un budget annuel de 204 M€, elle pilote 300 projets et recrute 100 professionnels par an.\n\nPrésentation de l’équipe :\n\nLa Banque Nationale de Données Maladies Rares (BNDMR) est un dispositif structurant des plans nationaux maladies rares (PNMR2, 3 et 4), porté par le ministère de la Santé et opéré par l’AP-HP. Elle a pour ambition de faire progresser la connaissance sur les maladies rares, d’améliorer la coordination des acteurs et de soutenir la recherche, grâce à la collecte et à l’exploitation de données de santé de haute qualité. Au cœur du dispositif, le système d’information BaMaRa permet le recueil et le partage sécurisé de données cliniques et administratives issues des centres experts maladies rares sur l’ensemble du territoire.\n\nVos missions\n\nL’équipe Data de la BNDMR est en charge de l’exploitation et de la valorisation de l’Entrepôt de Données (EDS) de la BNDMR. Intégrée à une cellule opérationnelle pluridisciplinaire d’environ 40 personnes, elle est composée d’un Chief Data Officer, de 6 data scientists, de 3 data managers et d’un data engineer/dataops. Elle intervient sur l’ensemble de la chaîne de valeur de la donnée : structuration, qualité, appariement, analyses statistiques et valorisation.\n\nDans un contexte d’évolution rapide de l’entrepôt de données (nouveaux jeux de données, appariement avec le SNDS, augmentation des projets de recherche), l’équipe œuvre à l’industrialisation des processus data et au soutien des projets académiques et industriels, au service de la recherche, du pilotage du système de santé et de l’innovation dans le champ des maladies rares.\n\nDans le cadre d’une collaboration avec la Filière de Santé Maladies Rares FAI²R, la BNDMR recherche un/e data scientist / ingénieur statisticien avec des compétences en data management pour assurer les missions suivantes :\n\nBiostatistique :\n\n·Participer à l’élaboration des protocoles d’études et aux choix méthodologiques (design, objectifs, critère de jugement, population d'étude, plan d'analyse statistique…).\n\n·Réaliser des analyses statistiques en lien avec des projets internes ou en partenariat avec des laboratoires publics/privés.\n\n·Réaliser des analyses statistiques sur des bases de données complexes auxquelles la BNDMR est appariée (SNDS, EDS, PMSI).\n\n·Valoriser les résultats en contribuant à des publications scientifiques, posters et abstracts.\n\nManipulation de données :\n\n·Mettre en place les différents scripts d’extraction, de préparation et de transformation des données pour les analyses statistiques.\n\n·Explorer d’une manière approfondie les données de l’entrepôt de santé BNDMR pour établir les scénarios de qualité à contrôler, et cibler les actions à mener pour améliorer leurs détections.\n\n·Appliquer des modèles de théorie des graphes et/ou de machine learning pour agréger et améliorer le recodage et la qualité de certaines variables d’intérêt.\n\n·Définir une structure fiable, documentée et harmonisée pour les différents scripts/packages à usages réguliers par les membres de l’équipe.\n\n·Produire des statistiques descriptives et restituer des résultats sous formes tabulaire et graphique.\n\n· Déplacements occasionnels à prévoir.\n\nProfil recherché\n\nDiplôme : Master ou PhD en science des données ou biostatistiques\nNiveau d’étude : Bac+5\nNiveau d’expérience : 1 à 2 ans d’expérience\n\nCompétences requises\n\n• Maîtrise des outils d’analyse de données (R ou Python), et des bases de données relationnelles\n• Expérience du travail collaboratif et reproductible (Gitlab)\n• Expérience en techniques de data management (multi-sources, chainage, sous-populations, gestion des données manquantes, etc.)\n• Expérience en méthodes statistiques appliquées aux sciences de la vie (descriptives, univariées, multivariées, régressions linéaire et logistique, modèles de survie, etc.)\n• La maîtrise des méthodes d’apprentissage automatique serait un plus\n• Une première expérience dans la manipulation de données de santé serait un plus\n• La connaissance des bases de données du SNDS (SNIIRAM, PMSI) serait un plus\n• Bon niveau d’anglais (oral et écrit)\n\nConnaissances associées\n\n• Intérêt pour les études épidémiologiques\n• Connaissances ou intérêt pour les principes d’ETL et outils BI\n• Sensibilité aux pratiques régies par le RGPD et des orientations et doctrines CNIL sur la protection des données de santé\n\nQualités requises\n\n• Travail en équipe, adaptabilité et autonomie\n• Organisation, rigueur et respect des délais\n• Confidentialité et respect du secret professionnel\n• Adhésion aux valeurs du service public, intérêt prononcé pour le domaine de la santé\n\nSchéma horaire\nJour\nTemps de travail\nAdministratif - Forfait\nTélétravail\nOui\nVos avantages à l'AP-HP\n\nPossibilité de télétravail si le poste le permet ;\n\nRemboursement partiel des transports en commun (75%) et/ou forfait mobilité ;\n\nAccès au restaurant du personnel à tarifs avantageux ;\n\nUn centre formation et de développement des compétences interne pour les formations management, les renforcement Métiers… ;\n\n19 jours de RTT, en plus des 25 jours de congés ;\n\nUne offre de sorties culturelles, de voyages, de centres de vacances pour les titulaires et CDD sur poste permanent (AGOSPAP), des réductions et des bons plans (HOPTISOINS) ;\n\nPour les enfants, crèches internes, voyages culturels, séjours linguistiques et possibilité de bénéficier du supplément familial de traitement.\n\nDescription de l'hôpital\nL'Assistance publique-Hôpitaux de Paris (AP-HP) est un centre hospitalier universitaire à dimension européenne mondialement reconnu.\nSes 38 hôpitaux accueillent chaque année 10 millions de personnes malades : en consultation, en urgence, lors d'hospitalisations programmées ou en hospitalisation à domicile.\nElle assure un service public de santé pour tous, 24h/24, et c'est pour elle à la fois un devoir et une fierté.\nL'AP-HP est le premier employeur d'Ile-de-France : 100 000 personnes – médecins, chercheurs, paramédicaux, personnels administratifs et ouvriers – y travaillent.\nAu cœur de l'Institution, le Siège de l'AP-HP rassemble sous un même périmètre les directions fonctionnelles et les établissements qui lui sont rattachés :\nCFDC (Centres de Formation et de Développement des Compétences), ACHAT (Achat Centraux Hôteliers Alimentaires et Techniques),\nDRCI (Département de la Recherche Clinique et de l'Innovation) et DSN (Direction des Services numériques).\nAvec ses 4000 collaborateurs, le Siège assure un rôle d'expert, de pilote et de coordinateur pour l'ensemble des hôpitaux.\nEngagée dans des projets novateurs et stratégiques au service des patients, l'AP-HP recherche aujourd'hui de nouveaux talents pour mener à bien sa mission.\nVous êtes l'un d'eux ? Venez nous rejoindre !\n\nRéférence de l'offre\n2026-20212",
+              "apply_options": [
+                {
+                  "title": "APHP",
+                  "link": "https://recrutement.aphp.fr/jobs/772370?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Apec",
+                  "link": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/177941272W?motsCles=Biostatisticien&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Choisir Le Service Public",
+                  "link": "https://choisirleservicepublic.gouv.fr/offre-emploi/data-scientist-fh-reference-APHP_2026-20212/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Carrières Et Offres D'emploi Chez EY France",
+                  "link": "https://www.rejoindre-ey.com/emploi/paris/data-scientist-experimente-f-h/40730/25603179520?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Welcome To The Jungle",
+                  "link": "https://www.welcometothejungle.com/fr/companies/aphp/jobs/data-scientist-f-h_paris_ADDSND_qK9Mw95?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "WIZBII",
+                  "link": "https://www.wizbii.com/company/malakoff-humanis/job/alternance-data-scientist-f-h-50?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "DevITJobs",
+                  "link": "https://devitjobs.fr/jobs/GROUPE-LA-BANQUE-POSTALE-Data-Scientist-Risques-FH?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jooble",
+                  "link": "https://fr.jooble.org/rjdp/214095858300901029?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhIFNjaWVudGlzdCBGL0giLCJjb21wYW55X25hbWUiOiJBUEhQIiwiYWRkcmVzc19jaXR5IjoiUGFyaXMiLCJodGlkb2NpZCI6IjFtTjEwS1hnM0xRQXBqMVFBQUFBQUE9PSIsImdsIjoiZnIiLCJobCI6ImVuIn0="
+            },
+            {
+              "title": "Datascientist",
+              "company_name": "Rothschild & Co",
+              "location": "Paris",
+              "via": "LinkedIn",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=j2H-8WvjHjrl5Lw3AAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXEsQoCMQwA0P2-QJwyiINgK4KLjgrCTYc_cKQ1tJFeU5oMt_jv4hve8B12DzTUyFSN1eAIowRQwh4zSIWnSCq0vWWzplfvVYtLamgcXZTFS6Ugq_9I0H-zZuzUChrN58tpda2mw-YlljVmLm_Yw12AK0zYWX8JeP87fwAAAA&shmds=v1_ATWGeeMWTuxXxu_C2vDe_VL9-ixOoiqwyqePJyqulQh64lxLhw&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=j2H-8WvjHjrl5Lw3AAAAAA%3D%3D",
+              "thumbnail": "https://serpapi.com/searches/697b35040fa72e500f3302c1/images/1ccd673e1dd4421d541bc9e424f33a29b70eae1a5028b233acc8596ced0bf7bc.jpeg",
+              "extensions": [
+                "15 hours ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "15 hours ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Rothschild & Co\n\nRothschild & Co est un groupe international de services financiers de premier plan, contrôlé par la famille depuis sept générations et au centre des marchés financiers depuis plus de 200 ans.\n\nNotre expertise, notre savoir-faire et notre réseau mondial nous permettent de proposer une vision unique qui bénéficie à l’activité et la richesse de nos clients et de nos parties prenantes, en respectant notre planète.\n\nNos équipes de 4 200 spécialistes du conseil financier présents sur le terrain dans plus de 40 pays, apportent une vision internationale unique à travers quatre activités de premier plan – Global Advisory, Wealth Management, Asset Management et Five Arrows.\n\nEn notre qualité de groupe familial fondé sur les relations humaines, nous attachons une importance particulière au recrutement et au développement de carrière de nos collaborateurs afin qu'ils puissent s'épanouir dans leur parcours professionnel.\n\nNous recherchons un(e) Datascientist pour rejoindre le Centre d’Expertise IA WAM (CoE) qui constitue un pilier de la stratégie Data & AI du périmètre Wealth & Asset Management (WAM). Le CoE a pour mission de mettre en œuvre la trajectoire IA au niveau WAM sur l’ensemble de ses géographies (France, Belgique, Monaco, UK, Suisse notamment), de mutualiser l’expertise et les ressources, et de garantir une approche cohérente, conforme et performante pour l’ensemble des solutions d’IA existantes pour les processus métiers.\n\nInscrit dans un modèle distribué et coordonné, le CoE assure la transversalité, la standardisation des pratiques et la gouvernance des solutions. Il accompagne les métiers dans l’identification, la priorisation et la conception de nouveaux cas d’usage, tout en soutenant leur déploiement à grande échelle en lien étroit avec les équipes business, IT, et fonctions supports.\n\nIl est composé d’équipes Produits, responsables de concevoir et développer des solutions IA répondant directement aux besoins métiers. Ces équipes Produits sont soutenues par des équipes Plateformes, qui définissent et gèrent la roadmap technique, maintiennent les environnements, outillages et services transverses (Azure AI Foundry, APIM, DevOps, observabilité, sécurité), et travaillent en continu à automatiser, optimiser et industrialiser les processus.\n\nLe/la Data Scientist du CoE contribue à la conception, à l’industrialisation et à la performance des solutions d’IA générative pour la banque privée et la gestion d’actifs. Ce rôle implique une forte collaboration avec le Data Engineering et Product Owners, et les équipes métiers afin de garantir la performance, la conformité et la montée en puissance des cas d’usage IA.\n\nMissions principales :\n\nCollecter, préparer et analyser les données\n• Collecter, structurer et fiabiliser les données issues de sources multiples (bases internes, APIs, open data) en respectant les standards de qualité et conformité\n• Analyser et interpréter les données pour fournir des insights et recommandations stratégiques\n\nModélisation et IA générative\n• Développer, entraîner et optimiser des modèles IA (LLM, RAG, fine-tuning) pour des cas d’usage métier stratégiques\n• Développer, entraîner et déployer des modèles de machine learning et deep learning (classification, régression, clustering, séries temporelles, NLP, computer vision, etc.)\n• Intégrer des techniques avancées (quantization, distillation) pour améliorer la performance et réduire les coûts\n\nIndustrialisation et MLOps\n• Collaborer avec les Data Engineers pour déployer les modèles en production (CI/CD, monitoring, cloud)\n• Garantir la robustesse et la scalabilité des solutions IA dans un environnement sécurisé\n\nGouvernance et conformité\n• Contribuer à la mise en place des standards de gouvernance IA (qualité, sécurité, RGPD)\n• Documenter les modèles et assurer la traçabilité des données et des décisions\n\nInnovation et adoption\n• Identifier de nouveaux cas d’usage IA en lien avec les métiers et les sponsors\n• Participer à la veille technologique et à l’expérimentation (PoC, prototypage)\n\nCommunication et vulgarisation\n• Créer des visualisations de données (dashboards, storytelling data) pour communiquer les résultats de façon claire et impactante\n• Sensibiliser les équipes métiers aux bonnes pratiques IA\n\nExpérience et compétences attendues\n• Expérience minimum de 5 ans dans le rôle de Data Scientist\n• Maîtrise de l’analyse de données, du machine learning et du déploiement de modèles\n• Maîtrise de Python, R, PySpark\n• Expérience avec Azure OpenAI Service et Azure Document Intelligence\n• Connaissance de Microsoft Fabric\n• Maîtrise des méthodes statistiques et techniques de modélisation\n• Compétence en gestion de la qualité, sécurité et gouvernance des données\n\nSavoir-être\n• Fort esprit d’analyse, résolution de problèmes complexes\n• Curiosité technologique, envie de contribuer à un projet innovant\n• Esprit collaboratif, autonomie, agilité, capacité d’expérimentation",
+              "apply_options": [
+                {
+                  "title": "LinkedIn",
+                  "link": "https://fr.linkedin.com/jobs/view/datascientist-at-rothschild-co-4366914158?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Trabajo.org",
+                  "link": "https://fr.trabajo.org/offre-3394-d03a3641ff77384dae28704187834a19?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Recruit.net",
+                  "link": "https://www.recruit.net/job/datascientist-jobs/718CF19079280697?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhc2NpZW50aXN0IiwiY29tcGFueV9uYW1lIjoiUm90aHNjaGlsZCBcdTAwMjYgQ28iLCJhZGRyZXNzX2NpdHkiOiJQYXJpcyIsImh0aWRvY2lkIjoiajJILThXdmpIanJsNUx3M0FBQUFBQT09IiwiZ2wiOiJmciIsImhsIjoiZW4ifQ=="
+            },
+            {
+              "title": "Data Science Intern H/F",
+              "company_name": "Pernod Ricard",
+              "location": "Paris",
+              "via": "Hellowork",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=sllt-xh-CWXywSMvAAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXMOw7CMAwAULH2AAxMnpFIEBILrIjfVMEBKie10qBgR7GHXoB7A8sbX_dZdO6EhvCMmTgS3NioMVz9GTZwlwBK2OIEwnARSYVWx8ms6sF71eKSGlqOLsrbC1OQ2b8k6J9BJ2xUCxoNu_12dpXTetn_dhnhkSO2ETJDjy3rF39-fAeIAAAA&shmds=v1_ATWGeeMjAtHyWjpYVNlhoOYY8-B0am3S-AC2dxk7WK_QnemR7Q&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=sllt-xh-CWXywSMvAAAAAA%3D%3D",
+              "thumbnail": "https://serpapi.com/searches/697b35040fa72e500f3302c1/images/1ccd673e1dd4421da9dcda993f63d545a150fb2ccc25edb3039eed0c3c0991b9.png",
+              "extensions": [
+                "1 day ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "1 day ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Détail du poste\n\nWant to join the world's No. 2 in wines & spirits and work among convivial teams? Pernod Ricard is looking for a Data Science Intern for 6 months from July to December 2026. You will be based at the Island, our office in central Paris (Saint Lazare Train Station, Paris 8).\n\nYou will participate in the technical implementation of one of the key data science programs in the Group's transformation plan, in the development of the project's code base, and in the maintenance of existing Machine Learning and optimization models in the Digital Data Science team.\n\nYour key missions:\n\nYou will contribute to the development of the program's algorithmic building blocks.You will be responsible for the maintenance and re-training of existing models.You will evangelize data science concepts to deployment managers.\n\nIf you recognize yourself in the description below, don't wait to apply!\nYou master the Python language and object-oriented programming, a theoretical grounding in the field of Data Science and Machine Learning, as well as knowledge of data management concepts (ETL, API, data storage solutions, SQL, etc.). Knowledge of versioning tools (GitHub) is a plus.You are rigorous, autonomous, with good analytical and synthesis skills.You are ready to evolve in an international environment and are recognized for your ability to work in a team and your sense of service.You speak English fluently, French is a plus.\n\nPlease note: to apply, you must be able to complete 6 months of internship and have an agreement issued by your school/university.\n\nAnd you'll benefit from these advantages:\n\nGross salary from 1410€ (Bac +4 and gap year) to 1550€ (Bac +5) per monthCompany restaurantUnlimited access to the Coursera training platform to enhance your experience.Employee events (Masterclasses, conferences, etc.)\n\nAll in a friendly, supportive environment that will help you to progress and build a solid professional network: 90.4% of our interns and alternates recommend us as an employer (Happy Trainees 2024)!\n\nPernod Ricard is committed to diversity and inclusion: we are a disability-friendly company, one of France's Top 10 companies for gender equality, and we work with associations to promote social inclusion. Our recruitment methods focus on competencies to ensure equal opportunities.\n\nDate de fin de publication :\n\nDate prévisible d'embauche :\n2026-07-01\n\nDate de fin d'emploi envisagée :\n2026-12-31",
+              "apply_options": [
+                {
+                  "title": "Hellowork",
+                  "link": "https://www.hellowork.com/fr-fr/emplois/75114897.html?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Engagement Jeunes",
+                  "link": "https://www.engagement-jeunes.com/fr/detail-offre/34693008/stage-pernod-ricard-data-science-intern-h-f.html?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Welcome To The Jungle",
+                  "link": "https://www.welcometothejungle.com/fr/companies/pernod-ricard/jobs/data-science-intern_paris_PR_qyZ5GKj?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "WIZBII Jobs",
+                  "link": "https://en.wizbii.com/company/scor/job/data-science-team-intern?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jooble",
+                  "link": "https://fr.jooble.org/jdp/9185765672818381582?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "BeBee",
+                  "link": "https://fr.bebee.com/job/9a9fa24b932bfe882e0229bba120e2f8?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Espace Emploi Agefiph",
+                  "link": "https://espace-emploi.agefiph.fr/candidat/offres/stages-clinical-data-standards-managerparis-ile-de-france-industries-agroalimentaires-stage-20151244?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jobintree",
+                  "link": "https://www.jobintree.com/emplois/75114897.html?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhIFNjaWVuY2UgSW50ZXJuIEgvRiIsImNvbXBhbnlfbmFtZSI6IlBlcm5vZCBSaWNhcmQiLCJhZGRyZXNzX2NpdHkiOiJQYXJpcyIsImh0aWRvY2lkIjoic2xsdC14aC1DV1h5d1NNdkFBQUFBQT09IiwiZ2wiOiJmciIsImhsIjoiZW4ifQ=="
+            },
+            {
+              "title": "Data Scientist AI for Business Optimization  F/H",
+              "company_name": "BNP Paribas",
+              "location": "Paris",
+              "via": "Groupe BNP Paribas",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=ysOab0SypaNWQd03AAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_x2LMQrCQBAAsU1tZbW1YE4EG60MYtRCAz4g7B2XZCW5PW5XCL7FxxpthmFgss8sK4-oCA9HPiiJwuECDScoXkLBi8A9Kg30RiUOACdzhhVc2YJ4TK6DKZbMbe8X-041ys4YkT5vRafD5Y4Hw8FbHs2TrfxQS4fJxx7V15vtesxjaJfz4lZBhYksClD4q3wB5IVtyZ8AAAA&shmds=v1_ATWGeeNo28otTlkdxMgf-ych4CwJPsUTsXLNIxGWnwRIOrDFGQ&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=ysOab0SypaNWQd03AAAAAA%3D%3D",
+              "thumbnail": "https://serpapi.com/searches/697b35040fa72e500f3302c1/images/1ccd673e1dd4421d65fb1fd595364da905362bab268d36bdd475881ce7c1f29a.png",
+              "extensions": [
+                "17 days ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "17 days ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Concrètement votre quotidien ?\n\nAu sein d’une équipe de Data & Analytics chevronnée, composée de business analysts et de datascientists chevronnés, vous travaillerez sur des projets visibles et stratégiques à forts enjeux financiers et humains pour une grande diversité de métiers, de cas d’application et données.\n\nGrâce à votre talent et vos connaissances en science des données, vous développerez et implémenterez des algorithmes de Machine Learning afin d'optimiser nos actions marketing, mieux personnaliser le pricing de nos offres et accompagner nos clients dans leur gestion financière au quotidien.\n\nVous mesurerez les performances économiques ou l’amélioration de la satisfaction du client (NPS) en mettant en place des tests sur le terrain (tests A/B, groupes de contrôles, etc.).\n\nVos projets seront de vrais défis techniques mais également humains. Vous devrez convaincre les métiers BNP Paribas de se transformer grâce au Machine Learning.\n\nVous serez aussi un ambassadeur de la transformation digitale auprès de vos interlocuteurs. En parallèle, vous participerez à la Communauté des Data Scientists.\n\nChez PACE (Partners in Action for Customer Experience), nous sommes une équipe d’une centaine d’experts, transverse aux activités de Banque de Détail et de Services Financiers Spécialisés de BNP Paribas. En France et à l'international, nous poursuivons deux objectifs : Aider les entités (Banques et Services) à exceller dans l'expérience client - ce que nous suivons par l'évolution du Net Promoter Score ; Créer de nouveaux business modèles.\n\nLes enjeux principaux sont l'excellence de l'expérience client & le fait d’être perçu par nos clients comme le compagnon de confiance pour la banque et au-delà. Le périmètre concerne la clientèle Retail (Particuliers et Small Business), Private et Corporate.\n\nNotre leader, le COO de Commercial, Personal Banking and Services et Head of PACE, a organisé ses équipes autour de 4 streams Opérationnels : Data & Analytics, Distribution Omnichannel Expérience, Innovation & New business models, Customer Excellence et 2 streams supports : We for Transformation, We for PACE.\n\nVous rejoindrez le stream 'Data & Analytics' qui est dédié à la transformation du groupe BNP Paribas par le recours à l'intelligence artificielle. Le stream est composé d'une vingtaine d'experts repartis entre data scientists, data business analysts et data analysts.\n\nNos équipes accompagnent les entités opérationnelles du pôle 'Retail & Services' sur des projets innovants bénéficiant d'une forte visibilité, ce qui vous permettra d'acquérir rapidement une connaissance approfondie du groupe et de ses enjeux stratégiques.\n\nPlus spécifiquement vous rejoindrez l’équipe Marketing & Risk Analytics composée de 7 collaborateurs.\n\nNous fonctionnons sur la base d'une organisation et de méthodes de travail Agile. Nous rejoindre, c’est partager notre volonté de vous faire grandir : « GROW through our transformation journey & PERFORM together to make success happen ».\n\nNous sommes localisés Palais du Hanovre, Paris 02, avec un rythme de télétravail à 50%.\n\nEnvie d'en savoir plus ? Sophie HELLER, head of PACE vous en dit plus en vidéo : Laissez-vous tenter !\nEt si l'on se projette, qu'est-ce que cela donne ?\n\nGrâce aux nombreux défis techniques et humains relevés, vous développerez votre expertise et votre capacité à gérer des projets complexes et multi-pays. Vous découvrirez la diversité des métiers et entités BNP Paribas en France comme en Europe.\n\nLes possibilités d'évolution sont multiples et vous les découvrirez au fil des nombreux projets menés à \"4-mains\" avec les entités BNP Paribas. Par ailleurs, vous serez épaulé par un manager \"coach\" pour continuellement améliorer votre expertise technique et votre communication. Vous pourrez évoluer à plus long terme en tant que Manager d’une équipe de Data Scientists ou sur d’autres postes.\n\nTravailler chez BNP Paribas c’est :\n\nUn package rémunération et des avantages :\n\n- Plan épargne entreprise/retraite, intéressement et participation, couverture santé et prévoyance, activités sociales et culturelles via le comité d’entreprise, …\n\n- De la flexibilité avec un rythme de travail hybride : des jours de télétravail à définir avec votre manager\n\nRejoignez un Groupe engagé et prenez part à notre grand projet de transformation vers la construction d’un monde plus durable. Découvrez nos engagements pour notre clientèle et la société.\n\nEngagez-vous à nos côtés sur votre temps professionnel, à travers notre programme OneMillionHoursToHelp.\nEtes-vous notre prochain Data Scientist AI for Business Optimization ?\n\nOui, si vous êtes diplômé d’un bac + 5 et si vous avez au moins 5 ans d’expérience en Machine Learning sur données structurées et vous avez une expertise en data science et en Mathématique appliquée.\n\nVous êtes à l’aise sur les dernières avancées dans le domaine (Machine learning, Optimisation), sur leur implémentation informatique (programmation python). En particulier, vous savez parfaitement définir la méthodologie (modèle, process) adaptée à la résolution d’un problème.\n\nA ou B ? à vous jouer… l’A/B Testing n’a pas de secret pour vous.\n\n#TeamPartner, pas de doute, vous avez l’esprit de coopération qui est indispensable pour embarquer l’entreprise dans une dynamique de change. Vous êtes reconnu pour votre capacité à convaincre, bref tout le monde a envie de vous suivre. Vous êtes #clientcentric en ayant la capacité pour observer les tendances et anticiper les attentes des métiers et des clients. #GoToThePoint, pas de doute vous êtes orienté résultat.\n\nSur le poste, votre capacité à vous adapter aux environnements et interlocuteurs est indispensable\n\nVous avez un très bon niveau d’anglais car l'international sera votre terrain de jeu !\nLes étapes du recrutement\n\nSi votre CV est retenu par notre équipe de recrutement, vous serez amené à passer 1 premier test de calcul, 1 entretien avec des RH (Staffing Business Partner) et 3 entretiens avec le métier avec tests techniques.\nLa diversité, l’équité et l’inclusion sont des valeurs clés pour le bien-être et la performance des équipes : tous les postes au sein du Groupe sont ouverts à tous !\n\nSi vous êtes en situation de handicap, vous pouvez envoyer votre CV et lettre de motivation à missionhandicap [at] bnpparibas (dot) com.\n\nDans un monde qui change, la diversité, l’équité et l’inclusion sont des valeurs clés pour le bien-être et la performance des équipes. Chez BNP Paribas, nous souhaitons accueillir et retenir tous les talents sans distinction : c’est ainsi que nous construirons, ensemble, la finance de demain, innovante, responsable et durable\n\nEnfin, nous attachons une importance particulière à ce que nos futurs collaborateurs et collaboratrices agissent au quotidien avec responsabilité éthique et professionnelle. À tout moment pendant le processus de recrutement, les informations figurant sur votre CV, vos données d’identification et vos antécédents pourront être vérifiés",
+              "apply_options": [
+                {
+                  "title": "Groupe BNP Paribas",
+                  "link": "https://group.bnpparibas/emploi-carriere/offre-emploi/data-scientist-ai-for-business-optimization-f-h?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jooble",
+                  "link": "https://fr.jooble.org/jdp/-3785474860799778478?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "BeBee",
+                  "link": "https://fr.bebee.com/job/e406e524c37e3845b37697f97bb1391d?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Trabajo.org",
+                  "link": "https://fr.trabajo.org/offre-3811-bea473b75dc5befd91c5898c17b65b7c?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "StackJobs",
+                  "link": "https://www.stackjobs.ai/jobs/data-scientist-ai-for-business-optimization-f-h-ile-de-france-mj1go309?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jobilize",
+                  "link": "https://www.jobilize.com/job/fr-paris-data-scientist-ai-for-business-optimization-f-h-bnp-paribas?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhIFNjaWVudGlzdCBBSSBmb3IgQnVzaW5lc3MgT3B0aW1pemF0aW9uICBGL0giLCJjb21wYW55X25hbWUiOiJCTlAgUGFyaWJhcyIsImFkZHJlc3NfY2l0eSI6IlBhcmlzIiwiaHRpZG9jaWQiOiJ5c09hYjBTeXBhTldRZDAzQUFBQUFBPT0iLCJnbCI6ImZyIiwiaGwiOiJlbiJ9"
+            },
+            {
+              "title": "Data Scientist / Analyst / Engineer Finance, Risque et Performance (H/F) – CDI – Paris",
+              "company_name": "Quadratic",
+              "location": "Paris (+1 other)",
+              "via": "Welcome To The Jungle",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=cTrfRBSBhFbO8ZK6AAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_yWNMY7CQAxFRUtJSeVyQZBZrUQDFQICbAXLAZAzmGRQsJOxkdiOO3AlTsJJUKD5_-lLT7_9aLXrORrCzgdiC2rgYMpY_r9pwXlgoghpYGRPA_gLWl8IyGBD8Sjx3MzwtXJpD563O8zm63dvMAaFIfxKBkoYfQHCsBTJS-pOCrNKx86plkmuhhZ84uXshCmTqztJpk3stcBIVYlG-5_R9zWpOO93thc8xEaBwJ-fFyyHklTHAAAA&shmds=v1_ATWGeeOr2GGHMelgXHPgFbpmYOvc7QhijkxJQS_YFUKhdJVz6w&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=cTrfRBSBhFbO8ZK6AAAAAA%3D%3D",
+              "thumbnail": "https://serpapi.com/searches/697b35040fa72e500f3302c1/images/1ccd673e1dd4421dbeed4be1930153b79bb7a5b83e61f12ff23fc65e3786e7db.png",
+              "extensions": [
+                "20 days ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "20 days ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Nous recherchons des consultant(e)s Data Scientist / Analyst / Engineer Senior pour pouvoir répondre aux besoins d’accompagnement de nos clients, et plus particulièrement leurs directions financières, dans leur transformation en leur proposant une approche Data Driven plus granulaire et plus transverse au service\n• Du pilotage de la performance\n• De la rationalisation des investissements\n• De l’optimisation des processus\n• Et de la gestion des risques.\n\nVotre expertise en analyse quantitative (pour développer les modèles) et vos compétences métier (pour en garantir l’interprétation et la pertinence) sont la clef pour le développement des solutions digitales et data que nous mettons en place pour accompagner la transformation de nos clients.",
+              "apply_options": [
+                {
+                  "title": "Welcome To The Jungle",
+                  "link": "https://www.welcometothejungle.com/fr/companies/quadratic-fr/jobs/data-scientist-finance-risque-et-performance-h-f-cdi-paris_paris?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jobijoba",
+                  "link": "https://www.jobijoba.com/fr/annonce/54/3761affa8705fec0c90b705001191d4e?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Jobilize",
+                  "link": "https://www.jobilize.com/job/fr-paris-consultant-data-analyst-scientist-stage-fe-h-f-labelium-hiring?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhIFNjaWVudGlzdCAvIEFuYWx5c3QgLyBFbmdpbmVlciBGaW5hbmNlLCBSaXNxdWUgZXQgUGVyZm9ybWFuY2UgKEgvRikg4oCTIENESSDigJMgUGFyaXMiLCJjb21wYW55X25hbWUiOiJRdWFkcmF0aWMiLCJhZGRyZXNzX2NpdHkiOiJQYXJpcyIsImh0aWRvY2lkIjoiY1RyZlJCU0JoRmJPOFpLNkFBQUFBQT09IiwiZ2wiOiJmciIsImhsIjoiZW4ifQ=="
+            },
+            {
+              "title": "Data Scientist, France - BCG X",
+              "company_name": "Boston Consulting Group",
+              "location": "Paris",
+              "via": "BCG Careers - Boston Consulting Group",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=x4ofSoFpk7zgD9c9AAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXMsQrCQAyAYVz7CE6ZRXsidNGtFQtOgotbSY9wPTmT45JCn8TntS7_t_3Vd1M1VzSEp4_EFtX2cCvInuAAbdfDa_UuIyhh8RMIQy8SEm0vk1nWs3OqqQ5qaNHXXj5OmEZZ3FtG_WfQCQvlhEbDqTkudeawg1bU1lcnrHOyyAH6InOGyPDAEvUHtbw4QpkAAAA&shmds=v1_ATWGeeOtTI7kejLcbCFkLE1Sh-T8at4VbuCRGJaSerdUPWleZw&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=x4ofSoFpk7zgD9c9AAAAAA%3D%3D",
+              "thumbnail": "https://serpapi.com/searches/697b35040fa72e500f3302c1/images/1ccd673e1dd4421d8f1ca322d8876a0e8166cb7e06da8e7ec002168ff5253531.png",
+              "extensions": [
+                "17 days ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "17 days ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Who We Are\n\nBoston Consulting Group partners with leaders in business and society to tackle their most important challenges and capture their greatest opportunities. BCG was the pioneer in business strategy when it was founded in 1963. Today, we help clients with total transformation-inspiring complex change, enabling organizations to grow, building competitive advantage, and driving bottom-line impact.\n\nTo succeed, organizations must blend digital and human capabilities. Our diverse, global teams bring deep industry and functional expertise and a range of perspectives to spark change. BCG delivers solutions through leading-edge management consulting along with technology and design, corporate and digital ventures—and business purpose. We work in a uniquely collaborative model across the firm and throughout all levels of the client organization, generating results that allow our clients to thrive.\n\nWe Are BCG X\n\nWe’re a diverse team of more than 3,000 tech experts united by a drive to make a difference. Working across industries and disciplines, we combine our experience and expertise to tackle the biggest challenges faced by society today. We go beyond what was once thought possible, creating new and innovative solutions to the world’s most complex problems. Leveraging BCG’s global network and partnerships with leading organizations, BCG X provides a stable ecosystem for talent to build game-changing businesses, products, and services from the ground up, all while growing their career. Together, we strive to create solutions that will positively impact the lives of millions.\n\nWhat You'll Do\n\nOur BCG X teams own the full analytics value-chain end to end: framing new business challenges, designing innovative algorithms, implementing, and deploying scalable solutions, and enabling colleagues and clients to fully embrace AI. Our product offerings span from fully custom-builds to industry specific leading edge AI software solutions.\n\nAs a Data Scientist, you'll be part of our rapidly growing team. You'll have the chance to apply data science methods and analytics to real-world business situations across a variety of industries to drive significant business impact. You'll have the chance to partner with clients in a variety of BCG regions and industries, and on key topics like climate change, enabling them to design, build, and deploy new and innovative solutions.\n\nAdditional responsibilities will include developing and delivering thought leadership in scientific communities and papers as well as leading conferences on behalf of BCG X. Successful candidates are intellectually curious builders who are biased toward action, scrappy, and communicative.\n\nWe are looking for talented individuals with a passion for data science, statistics, operations research and transforming organizations into AI led innovative companies. Successful candidates possess the following:\n• Comfortable in a client-facing role with the ambition to lead teams\n• Likes to distill complex results or processes into simple, clear visualizations\n• Explain sophisticated data science concepts in an understandable manner\n• Love building things and are comfortable working with modern development tools and writing code collaboratively (bonus points if you have a software development or DevOps experience)\n• Significant experience applying advanced analytics to a variety of business situations and a proven ability to synthesize complex data\n• Deep understanding of modern machine learning techniques and their mathematical underpinnings, and can translate this into business implications for our clients\n• Have strong project management skills\n\nWhat You'll Bring\n• TECHNOLOGIES:\n\nProgramming Languages: Python\n\nBoston Consulting Group is an Equal Opportunity Employer. All qualified applicants will receive consideration for employment without regard to race, color, age, religion, sex, sexual orientation, gender identity / expression, national origin, disability, protected veteran status, or any other characteristic protected under national, provincial, or local law, where applicable, and those with criminal histories will be considered in a manner consistent with applicable state and local laws.\n\nBCG is an E - Verify Employer. Click here for more information on E-Verify.",
+              "apply_options": [
+                {
+                  "title": "BCG Careers - Boston Consulting Group",
+                  "link": "https://careers.bcg.com/global/en/job/55820/Data-Scientist-France-BCG-X?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Welcome To The Jungle",
+                  "link": "https://www.welcometothejungle.com/sk/companies/boston-consulting-group/jobs/data-scientist-bcg-x_paris?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "LinkedIn",
+                  "link": "https://fr.linkedin.com/jobs/view/data-scientist-france-bcg-x-at-boston-consulting-group-bcg-4327275531?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "InHerSight",
+                  "link": "https://www.inhersight.com/company/the-boston-consulting-group/job/ihs/8zpvxysg?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Experteer",
+                  "link": "https://www.experteer.fr/career/view-jobs/data-scientist-bcg-x-paris-iledefrance-frankreich-55099884?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "ZipRecruiter France",
+                  "link": "https://www.ziprecruiter.fr/jobs/492377973-data-scientist-france-bcg-x-a-boston-consulting-group?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Sercanto",
+                  "link": "https://www.sercanto.fr/detail/a/garde-alternee-a-paris-a-partir-de-septembre_paris_926472066?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Demploi Fr",
+                  "link": "https://demploi.fr/technology_paris-c272118/data-scientist-france-bcg-x_i3612192205?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhIFNjaWVudGlzdCwgRnJhbmNlIC0gQkNHIFgiLCJjb21wYW55X25hbWUiOiJCb3N0b24gQ29uc3VsdGluZyBHcm91cCIsImFkZHJlc3NfY2l0eSI6IlBhcmlzIiwiaHRpZG9jaWQiOiJ4NG9mU29GcGs3emdEOWM5QUFBQUFBPT0iLCJnbCI6ImZyIiwiaGwiOiJlbiJ9"
+            },
+            {
+              "title": "Senior Data Scientist - F/M",
+              "company_name": "Technip Energies",
+              "location": "Paris",
+              "via": "LinkedIn",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=5gSx7Z892EQndOpFAAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXEvQrCQAwAYFz7BjplFuxJwUVXf0AQhLqX9Ah3KTU5Lhn6ED60-g1f81k1XU_CWuGMjtBHJnE2hx1cw-P3XUcwwhozqMBNNc20OWX3YscQzOY2maNzbKO-gwqNuoRJR_s3WMZKZUanoTvsl7ZI2q5fFLNwgYtQTUwGLPDEyvYF49--0Y8AAAA&shmds=v1_ATWGeeNdakcYo6R2IBebp9Zk8BQaB5DxLUxY9GvFpTvOnt5W4Q&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=5gSx7Z892EQndOpFAAAAAA%3D%3D",
+              "thumbnail": "https://serpapi.com/searches/697b35040fa72e500f3302c1/images/1ccd673e1dd4421d488936572dd48d57c4b4aa645d5e90c364b2ef20aa49555d.jpeg",
+              "extensions": [
+                "2 days ago",
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "posted_at": "2 days ago",
+                "schedule_type": "Full-time"
+              },
+              "description": "Job Description\n\nBe part of the solution at Technip Energies and embark on a one-of-a-kind journey. You will be helping to develop cutting-edge solutions to solve real-world energy problems.\n\nWe are currently seeking a Senior Data Scientist , reporting directly to Head of AI and Automation Hub to join our Data, New Tech and Software Engineering team based in Nanterre, Paris,France.\n\nAbout us:\n\nTechnip Energies is a global technology and engineering powerhouse. With leadership positions in LNG, hydrogen, ethylene, sustainable chemistry, and CO2 management, we are contributing to the development of critical markets such as energy, energy derivatives, decarbonization, and circularity. Our complementary business segments, Technology, Products and Services (TPS) and Project Delivery, turn innovation into scalable and industrial reality.\n\nThrough collaboration and excellence in execution, our 17,000+ employees across 34 countries are fully committed to bridging prosperity with sustainability for a world designed to last.\n\nAbout the mission we offer you:\n\nWe are seeking a Senior Data Scientist with 5-7 years of experience to join our innovative AI team. This role offers the opportunity to work on cutting-edge artificial intelligence solutions across energy, infrastructure, and industrial applications. The ideal candidate will have a proven track record in GenAI, Computer Vision, and NLP, with hands-on experience deploying production-ready ML solutions in cloud environments.\n\nTechnip Energies has been digitalizing for several years, has many building blocks to derive value from the Digital in the broadest sense and wishes to accelerate its digitalization by capitalizing on what has been done so far, setting an ambitious course for the next 5 years to better serve its customers, anticipate their needs and gain substantially in efficiency while taking advantage of new technologies.\n\nAn evolution in the operating model has been performed recently, creating 1 new CDIO role (Management of Digital and Information Technology). CDIO launched a Digital Acceleration Plan. Phase 1 of the plan has been delivered, defining ambition of the Digital acceleration plan in terms of technology and expected business outcomes.\n\nPhase 2 is ongoing and includes the implementation of a new Product / Platform operating model within Digiteam. During this phase many initiatives are launched to build new products on Technip Energies segments “Project Delivery” as well as “Technology, Products Services”. The phase 2 also aims to reinforce the historically weak Enterprise Architecture discipline, enabling Coherence and Alignment from Strategy to Execution during the business digitalization roadmap.\n\nMain responsibilities:\n\nAI & Machine Learning Development\n• Design, develop, and deploy advanced GenAI and machine learning models for diverse applications.\n• Lead the development and continuous improvement of RAG (Retrieval-Augmented Generation) systems for complex document processing\n• Implement multi-agent workflows to solve complex business problems\n• Build , finetune and optimize LLM , computer vision models for defect detection, crack identification, and object segmentation in industrial imagery\n• Develop NLP pipelines for text classification, summarization, and information extraction using state-of-the-art LLMs\n\nCloud Infrastructure & MLOps\n• Design and implement scalable cloud-based ML solutions on Azure\n• Deploy and manage ML services using Azure Kubernetes Service (AKS), Azure ML Studio, and containerized applications\n• Build robust data pipelines and processing frameworks\n• Implement MLOps best practices including model monitoring, data drift detection, CI/CD pipelines, and automated retraining\n\nInnovation & Research\n• Conduct research and experimentation on emerging AI technologies through internal lab initiatives\n• Generate synthetic data for various use cases including time series, tabular data, and images to enhance model training\n• Perform POCs and technology benchmarking to evaluate new tools, frameworks, and methodologies\n• Stay current with latest developments in GenAI, computer vision, and deep learning\n\nLeadership & Collaboration\n• Lead and mentor a team of 4-5 data scientists in an international, multicultural environment\n• Collaborate with cross-functional teams including engineering, product, and business stakeholders\n• Present technical findings and project outcomes to both technical and non-technical audiences\n• Contribute to knowledge sharing through presentations at industry conferences and internal workshops\n\nStarting Date: ASAP\n\nAbout you:\n\nWe love to hear from you and how you match with this position. To be successful in this mission you should consider the following requirements:\n\nEducation\n• Degree in Data Science, Artificial Intelligence, Computer Science, or related field\n\nTechnical Experience\n• 5-7 years of hands-on experience as a Data Scientist or Machine Learning Engineer\n• Proven expertise in Computer Vision applications (object detection, segmentation, defect identification)\n• Strong background in Generative AI and Large Language Models (LLMs)\n• Experience with Natural Language Processing (NLP) including text classification and OCR\n• Demonstrated success deploying ML models to production environments\n\nProgramming & Tools\n• Expert-level proficiency in LLM finetuning and optimization\n• Strong experience with deep learning frameworks: PyTorch, TensorFlow, Keras\n• Proficiency in computer vision libraries: OpenCV, Pillow\n• Working knowledge of SQL and experience with C# and angular is a plus\n• Familiarity with development environments: Jupyter Notebook, PyCharm, Visual Studio, Anaconda\n\nCloud & Infrastructure\n• Hands-on experience with major cloud platforms: Microsoft Azure and Google Cloud Platform\n• Experience with ML platforms such as Azure ML Studio, Dataiku, or similar\n• Knowledge of containerization and orchestration (Docker, Kubernetes)\n• Understanding of MLOps practices and CI/CD pipelines\n\nDomain Knowledge (Optional But Preferred)\n• Experience in energy sector, infrastructure, or industrial applications strongly preferred\n• Understanding of industrial monitoring, surveillance systems, or asset management\n• Familiarity with safety-critical applications and regulatory requirements is a plus\n\nSoft Skills:\n• Ability to functionally manage people or mentor them\n• Ability to communicate with stakehodlers on different levels in the organization\n• Ability to influence\n• Innovative and creative approach to problem solving is valued\n\nYour career with us\n\nWorking at Technip Energies is an inspiring journey, filled with groundbreaking projects and dynamic collaborations. Surrounded by diverse and talented individuals, you will feel welcomed, respected, and engaged. Enjoy a safe, caring environment where you can spark new ideas, reimagine the future, and lead change. As your career grows, you will benefit from learning opportunities at T.EN University, such as The Future Ready Program, Graduate Program, and from the support of your manager through check-in moments like the Mid-Year Development Review, fostering continuous growth and development.\n\nWhat’s Next?\n\nOnce receiving your system application, our recruiting team will screen and match your skills, experience, and potential team fit against the role requirements. We ask for your patience as the team completes the volume of applications with reasonable timeframe. Check your application progress periodically via personal account from created candidate profile during your application.\n\nWe invite you to get to know more about our company by visiting www.ten.com and follow us on LinkedIn , Instagram , Facebook , X and YouTube for company updates.",
+              "apply_options": [
+                {
+                  "title": "LinkedIn",
+                  "link": "https://fr.linkedin.com/jobs/view/senior-data-scientist-f-m-at-technip-energies-4366032774?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJTZW5pb3IgRGF0YSBTY2llbnRpc3QgLSBGL00iLCJjb21wYW55X25hbWUiOiJUZWNobmlwIEVuZXJnaWVzIiwiYWRkcmVzc19jaXR5IjoiUGFyaXMiLCJodGlkb2NpZCI6IjVnU3g3Wjg5MkVRbmRPcEZBQUFBQUE9PSIsImdsIjoiZnIiLCJobCI6ImVuIn0="
+            },
+            {
+              "title": "Data Engineer/Scientist",
+              "company_name": "Mitsio Motu",
+              "location": "Paris",
+              "via": "Jooble",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=Z5paOFfADATVDeN6AAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXEsQoCMQwAUFxvdnLKLNiK4KKrIggHgh9wpCX0IjUpTYTb_XHxDW_4roZwQUe4SmEh6vGZmcTZHHZw1wRG2PMMKnBTLZU259m92SlGsxqKOTrnkPUdVSjpEl-a7N9kM3ZqFZ2mw3G_hCZlux7ZjRVG9Q-wwAM72w8HHmAahgAAAA&shmds=v1_ATWGeeOwVgsHhpChoLP-ivZURrX_2OqaVR2PyzAbhAkDDrMeNQ&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=Z5paOFfADATVDeN6AAAAAA%3D%3D",
+              "extensions": [
+                "15 hours ago"
+              ],
+              "detected_extensions": {
+                "posted_at": "15 hours ago"
+              },
+              "description": "JOB ALERT Data Engineer / Data Scientist (Mission projet) (CODE OFFRE: DATA2601-001)\n\nDébut : Mars 2026 | Lieu : Lomé, Togo\n\nVous voulez construire le futur de la donnée en Afrique de l’Ouest ? Nous recherchons un.e talent hors norme pour rejoindre une aventure technologique ambitieuse au carrefour de l’intérêt général et de l’innovation de pointe.\n\nLe Challenge\n\nAu sein de notre équipe Data, vous participerez au déploiement d’une architecture Data Mesh de pointe pour le compte de comptes publics et d’acteurs privés importants. Votre mission : transformer des flux massifs de données brutes en outils d’aide à la décision et en interfaces conversationnelles intelligentes (Chatbots).\n\nVotre Terrain de Jeu Technique\n\nEn vous appuyant sur notre écosystème technique, vous interviendrez en fonction de votre profil et experience sur :\n\n- Pipeline & Architecture : Contribution à l’ingestion et au traitement via Apache NiFi, Spark et MinIO.\n\n- Stockage & Gouvernance : Manipulation de formats modernes (Apache Iceberg) et gestion de la qualité des données avec OpenMetadata.\n\n- Intelligence Artificielle : Conception et déploiement de Chatbots (LLMs, NLP) pour faciliter l’accès à l’information publique et privée.\n\n- Data Viz & App : Création de dashboards d’impact sur Grafana, Power BI, Superset et développement d’applications avec Shiny / Streamlit.\n\nVos Missions\n\n- Analyses & Modélisation : Valoriser les données quantitatives et géospatiales (SIG) pour des secteurs clés : éducation, santé, agriculture, énergie.\n\n- Innovation IA : Tester et implémenter des modèles de NLP pour les interfaces chatbots et la vision par ordinateur.\n\n- Déploiement Data Mesh : Soutenir la mise en place d’une infrastructure décentralisée, scalable et sécurisée.\n\n- Accompagnement : Rédiger des notes stratégiques et former les cadres de l’administration à la culture de la donnée.\n\nPrêt.e à relever le défi ?\n\nPostulez ici :\n\nATTENTION: INDIQUER LE CODE OFFRE DANS LE FORMULAIRE",
+              "apply_options": [
+                {
+                  "title": "Jooble",
+                  "link": "https://fr.jooble.org/jdp/3822014402060066810?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Trabajo.org",
+                  "link": "https://fr.trabajo.org/offre-3394-f258eb40a61c0aa30a1767a53777eeff?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJEYXRhIEVuZ2luZWVyL1NjaWVudGlzdCIsImNvbXBhbnlfbmFtZSI6Ik1pdHNpbyBNb3R1IiwiYWRkcmVzc19jaXR5IjoiUGFyaXMiLCJodGlkb2NpZCI6Ilo1cGFPRmZBREFUVkRlTjZBQUFBQUE9PSIsImdsIjoiZnIiLCJobCI6ImVuIn0="
+            },
+            {
+              "title": "Product Analytics - Data Scientist",
+              "company_name": "Criteo",
+              "location": "Paris",
+              "via": "Criteo Careers",
+              "share_link": "https://www.google.com/search?ibp=htl;jobs&q=Data+Scientist+Paris&htidocid=uCWA1_gy5LU15AhpAAAAAA%3D%3D&hl=en-FR&shem=bdsle&shndl=37&shmd=H4sIAAAAAAAA_xXLMQoCMRBAUWy3sbeaWjARwUKtREGwWvAAyyQOSZaYCZkR1iN4a9fmFw9-9110h77x8-0VzgXzR5MX2MAVFeHhExVNojPc2YEQNh-BC9yYQ6bVKapWOVorkk0Qxfk2nl-WCzme7MhO_hkkYqOaUWnY7beTqSWsl5eWlBhSgR5bkh90GNV9jAAAAA&shmds=v1_ATWGeeOslyXqf4sRUsP71_2oeaAn5YaByPAQLILnbdTSZq-L3w&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Data+Scientist+Paris&htidocid=uCWA1_gy5LU15AhpAAAAAA%3D%3D",
+              "extensions": [
+                "Full-time"
+              ],
+              "detected_extensions": {
+                "schedule_type": "Full-time"
+              },
+              "description": "What You'll Do:\n\nThe Data Science & Product Analytics team uses cutting edge technology, advanced statistics and machine learning to tackle some of the most complex Product challenges at Criteo.\n\nWe help Criteo validate and evolve our products while exploring strategic game-changers to vault Criteo ahead in a fast-evolving media landscape. The team brings data and business expertise to feature teams, a unique understanding of complex Criteo machinery and supports Product Managers to design and build products with difference.\n\nWe serve as trusted partners to leadership and work closely with Product Managers, R&D, Finance & Business teams.\n\nInside Data Science & Product Analytics:\n\nThe topics we tackle are wide and always evolving!\n• Support the Measurement and R&D teams to build a comprehensive, practical, and universal measurement framework that frames the way CMOs understand their online marketing efficiency along the entire buyer journey\n• Improve Identity & Privacy solutions by optimizing our capability to recognize users across all their devices and their interactions in the open-internet\n• Work with the Quality Ad Experience team to pivot our user-level personalization engine and delivery rules to contextual and/or audience-based strategy\n• Explore and support the development of our New Marketing Outcomes: Video & CTV, Contextual, and Omnichannel.\n• Build the Buyer Index, a decision support service to improve the performance of digital ad campaigns in meeting clients’ goals across all addressability scenarios: addressable, cohort-based, or contextual.\n• Work with the Trading Strategies team, to offer a suite of controls to our advertisers and enhance the performance of our business models: budget, audience, targeting...\n\nWhat you’ll do\n\nYou enjoy solving real-world problems with data. Our business is built on a quantitative culture. You will be assigned to one or several projects.\n\nOverall, your responsibilities include:\n• Build scalable analytic solutions using state-of-the-art tools based on large and granular datasets\n• Develop models and conduct data-driven analysis to measure the impact of your solutions\n• Define, drive and analyze results of experiments, both offline and on-line (e.g. A/B tests)\n• Identify and quantify opportunities for optimizations and product development\n• Transform business problems into actionable insights.\n\nWho You Are:\n• Master’s degree or higher in a quantitative field (Mathematics, Computer Science, Physics, Engineering, Economics, etc.)\n• Outstanding analytical skills and creative thinking\n• Fluency in the core toolkit of Data Science:\n• Manipulating large-scale data sets\n• Building data pipelines\n• Descriptive and predictive modeling\n• Implementing visualizations, dashboards, and reports\n• Excellent interpersonal and communication skills, pro-active and independent​\n• Fun to work with!\n\nNB: Please send us a resumé in English\n\nWe acknowledge that many candidates may not meet every single role requirement listed above. If your experience looks a little different from our requirements but you believe that you can still bring value to the role, we’d love to see your application!​\nWho We Are:\n\nCriteo is a leader in commerce media, helping brands, agencies, and publishers create meaningful consumer connections through AI-powered advertising solutions. We’re shaping a more open and sustainable digital future for advertising.\n\nAt Criteo, our culture is as unique as it is diverse. From our offices across the globe or from the comfort of home, our 3,600 Criteos collaborate together to build an open, impactful, and forward-thinking environment.\n\nWe foster a workplace where everyone is valued, and employment decisions are based solely on skills, qualifications, and business needs—never on non-job-related factors or legally protected characteristics.\n\nWhat We Offer:\n\n🏢 Ways of working – Our hybrid model blends home with in-office experiences, making space for both.\n📈 Grow with us – Learning, mentorship & career development programs.\n💪 Your wellbeing matters – Health benefits, wellness perks & mental health support.\n🤝 A team that cares – Diverse, inclusive, and globally connected.\n💸 Fair pay & perks – Attractive salary, with performance-based rewards and family-friendly policies, plus the potential for equity depending on role and level.\n\nAdditional benefits may vary depending on the country where you work and the nature of your employment with Criteo.",
+              "apply_options": [
+                {
+                  "title": "Criteo Careers",
+                  "link": "https://careers.criteo.com/en/jobs/r13716/product-analytics-data-scientist/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Descartes Underwriting",
+                  "link": "https://careers.descartesunderwriting.com/jobs/1529516-data-scientist-cdi?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Welcome To The Jungle",
+                  "link": "https://www.welcometothejungle.com/fr/companies/jakala/jobs/data-scientist-stagiaire_paris?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "French Tech",
+                  "link": "https://la-french-tech.welcomekit.co/companies/descartes-underwriting-1/jobs/data-scientist_paris?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Indeed",
+                  "link": "https://fr.indeed.com/viewjob?jk=9c38d3459f285875&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Smart Recruiters Jobs",
+                  "link": "https://jobs.smartrecruiters.com/Ubisoft2/744000105168094-data-scientist-h-f-nb?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Engagement Jeunes",
+                  "link": "https://www.engagement-jeunes.com/fr/detail-offre/34657914/cdi-ubisoft-data-scientist-h-f-nb.html?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                },
+                {
+                  "title": "Fradeo",
+                  "link": "https://www.fradeo.com/jobs/r-d-data-scientist-cdi-ebcbacd9?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic"
+                }
+              ],
+              "job_id": "eyJqb2JfdGl0bGUiOiJQcm9kdWN0IEFuYWx5dGljcyAtIERhdGEgU2NpZW50aXN0IiwiY29tcGFueV9uYW1lIjoiQ3JpdGVvIiwiYWRkcmVzc19jaXR5IjoiUGFyaXMiLCJodGlkb2NpZCI6InVDV0ExX2d5NUxVMTVBaHBBQUFBQUE9PSIsImdsIjoiZnIiLCJobCI6ImVuIn0="
+            }
+          ],
+          "serpapi_pagination": {
+            "next_page_token": "eyJmYyI6IkVvd0RDc3dDUVUxdU15MTVWR1V6YURsemRtTTRSMDV1Y1ZSMlEzbHJXSE40Y1dWVlVUZHFjWFJRVW1SblkwODFZWGhsWm5wMVNqWnRXVU4wTlVJNGRISmhTMDVJWXpsYWJqSTNja1ZsUnpoSlMyTmxOVkUzYlhGS2NGbG5ia1pOVGt0alZFTkZjSHAyYmtkU01rRnVUbnBpZDBWbk5YcGZOMmxwVlVNNVgyeDBWV3R5UkVoTmJWUktWR0YyTXpWV2FuZFBTVFExWDNwS1gwbzVSRGhmUzJGaGNYTklXakp4YXpKbmVuVlRlbDkzTFdWdlFtSTVSVEpxUkRCTGVWWnlTWGM0TVhsNGMyYzNUbkZ4Y3pjdGMzaFBXa0pSYmpCdFpITlZVVXBKTUZkamVGbGlSWFJzVHpaVlJ5MXJTM1YyVVRWMmJqaE5YMjA0YWxOQmN6aElUekoyY0V4TVRHWkNOSEJoWVZCQ00wdElkelpNZDNOamNtUkJibU54WDNRM05sSnNNM1UxUzE5bWFtMUxXR3hHV21RdFIxRXhjVFF5YzJSUU0wTm1kVEl3TjJrelluSlBYMGRVWlZkSFNHaFJXR3dTRjBKRVZqZGhabXBHVDA5aVNXdFFTVkJyYzNaRmExRk5HaUpCU2t0TVJtMUxjM2hRU2tkUmRtOVlXR1ZsTldaTlpGZHBXbVpyYjBJeE0wZEIiLCJmY3YiOiIzIn0=",
+            "next": "https://serpapi.com/search.json?engine=google_jobs&gl=fr&google_domain=google.com&hl=en&next_page_token=eyJmYyI6IkVvd0RDc3dDUVUxdU15MTVWR1V6YURsemRtTTRSMDV1Y1ZSMlEzbHJXSE40Y1dWVlVUZHFjWFJRVW1SblkwODFZWGhsWm5wMVNqWnRXVU4wTlVJNGRISmhTMDVJWXpsYWJqSTNja1ZsUnpoSlMyTmxOVkUzYlhGS2NGbG5ia1pOVGt0alZFTkZjSHAyYmtkU01rRnVUbnBpZDBWbk5YcGZOMmxwVlVNNVgyeDBWV3R5UkVoTmJWUktWR0YyTXpWV2FuZFBTVFExWDNwS1gwbzVSRGhmUzJGaGNYTklXakp4YXpKbmVuVlRlbDkzTFdWdlFtSTVSVEpxUkRCTGVWWnlTWGM0TVhsNGMyYzNUbkZ4Y3pjdGMzaFBXa0pSYmpCdFpITlZVVXBKTUZkamVGbGlSWFJzVHpaVlJ5MXJTM1YyVVRWMmJqaE5YMjA0YWxOQmN6aElUekoyY0V4TVRHWkNOSEJoWVZCQ00wdElkelpNZDNOamNtUkJibU54WDNRM05sSnNNM1UxUzE5bWFtMUxXR3hHV21RdFIxRXhjVFF5YzJSUU0wTm1kVEl3TjJrelluSlBYMGRVWlZkSFNHaFJXR3dTRjBKRVZqZGhabXBHVDA5aVNXdFFTVkJyYzNaRmExRk5HaUpCU2t0TVJtMUxjM2hRU2tkUmRtOVlXR1ZsTldaTlpGZHBXbVpyYjBJeE0wZEIiLCJmY3YiOiIzIn0%3D&q=Data+Scientist+Paris"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fit Criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score the job and extract": {
+      "main": [
+        [
+          {
+            "node": "Parse LLM JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RetrieveCV": {
+      "main": [
+        [
+          {
+            "node": "Download CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NormalizeData": {
+      "main": [
+        [
+          {
+            "node": "Filter and deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter and deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Score the job and extract",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Score the job and extract",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Input": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Scores + Meta",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Scores + Meta": {
+      "main": [
+        [
+          {
+            "node": "Rank by Overall Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LLM JSON": {
+      "main": [
+        [
+          {
+            "node": "Merge Scores + Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank by Overall Score": {
+      "main": [
+        [
+          {
+            "node": "Top 15 Slice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Top 15 Slice": {
+      "main": [
+        [
+          {
+            "node": "Build Email HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email HTML": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Jobs search": {
+      "main": [
+        [
+          {
+            "node": "NormalizeData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Score the job and extract",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit Criteria": {
+      "main": [
+        [
+          {
+            "node": "General Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General Config": {
+      "main": [
+        [
+          {
+            "node": "RetrieveCV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Score the job and extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RetrievePS": {
+      "main": [
+        [
+          {
+            "node": "Download PS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from PS": {
+      "main": [
+        [
+          {
+            "node": "MapPS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from CV": {
+      "main": [
+        [
+          {
+            "node": "MapCV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapCV": {
+      "main": [
+        [
+          {
+            "node": "RetrievePS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapPS": {
+      "main": [
+        [
+          {
+            "node": "Google Jobs search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download CV": {
+      "main": [
+        [
+          {
+            "node": "Extract from CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PS": {
+      "main": [
+        [
+          {
+            "node": "Extract from PS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Paris",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1d682bc1-7da0-4577-ad78-053a7617082e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "58b49ef46724834f4190d8dbfd7adc4cb2bedb8c71551cd28ba35731fd840f01"
+  },
+  "id": "YHkjmpSkNsT0_TAb8ezYD",
+  "tags": []
+}
